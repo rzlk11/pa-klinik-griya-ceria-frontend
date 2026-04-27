@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -10,40 +10,11 @@ import {
   Legend
 } from 'chart.js';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const stats = [
-  { label: 'Total Pasien', value: 50, icon: '👤' },
-  { label: 'Total Dokter', value: 10, icon: '🩺' },
-  { label: 'Total Jenis Obat', value: 10, icon: '💊' },
-  { label: 'Total Transaksi Hari ini', value: 'Rp 150.000', icon: '🧾' },
-];
-
-const obatStok = [
-  { name: 'Obat 1', value: 5, color: 'bg-red-500' },
-  { name: 'Obat 2', value: 10, color: 'bg-red-500' },
-  { name: 'Obat 3', value: 15, color: 'bg-yellow-400' },
-  { name: 'Obat 4', value: 20, color: 'bg-yellow-400' },
-  { name: 'Obat 5', value: 40, color: 'bg-green-500' },
-  { name: 'Obat 6', value: 40, color: 'bg-green-500' },
-];
-
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const chartData = [500, 400, 200, 100, 700, 600, 50, 100, 500, 400, 500, 600];
-
-const barData = {
-  labels: months,
-  datasets: [
-    {
-      label: 'Total Pendapatan',
-      data: chartData,
-      backgroundColor: '#166534',
-      borderRadius: 6,
-      barThickness: 32,
-    },
-  ],
-};
 
 const barOptions = {
   responsive: true,
@@ -73,8 +44,96 @@ function Dashboard() {
   const navigate = useNavigate();
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
 
-    const handleLogout = () => {
-    navigate('/');
+  const [pasienCount, setPasienCount] = useState(0);
+  const [dokterCount, setDokterCount] = useState(0);
+  const [obatCount, setObatCount] = useState(0);
+  const [todayTransaksi, setTodayTransaksi] = useState(0);
+  const [obatStok, setObatStok] = useState([]);
+  const [chartData, setChartData] = useState(Array(12).fill(0));
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [pasienRes, dokterRes, obatRes, transaksiRes] = await Promise.all([
+          axios.get('http://localhost:5000/pasien', { withCredentials: true }),
+          axios.get('http://localhost:5000/dokter', { withCredentials: true }),
+          axios.get('http://localhost:5000/obat', { withCredentials: true }),
+          axios.get('http://localhost:5000/transaksi', { withCredentials: true }),
+        ]);
+
+        setPasienCount(pasienRes.data.length);
+        setDokterCount(dokterRes.data.length);
+        setObatCount(obatRes.data.length);
+
+        const colors = ['bg-red-500', 'bg-yellow-400', 'bg-green-500', 'bg-blue-500', 'bg-purple-500'];
+        const formattedObat = obatRes.data.map((o, idx) => ({
+          name: o.nama_obat,
+          value: o.stok,
+          color: colors[idx % colors.length]
+        }));
+        setObatStok(formattedObat);
+
+        const todayDate = new Date();
+        const year = todayDate.getFullYear();
+        const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+        const day = String(todayDate.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        let totalToday = 0;
+        const monthlyData = Array(12).fill(0);
+
+        transaksiRes.data.forEach(t => {
+          const biaya = Number(t.total_biaya);
+          if (t.tanggal_transaksi === todayStr) {
+            totalToday += biaya;
+          }
+          const m = parseInt(t.tanggal_transaksi.split('-')[1], 10) - 1;
+          if (m >= 0 && m <= 11) {
+            monthlyData[m] += biaya;
+          }
+        });
+
+        setTodayTransaksi(totalToday);
+        setChartData(monthlyData);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await axios.delete('http://localhost:5000/logout', { withCredentials: true });
+      navigate('/');
+    } catch (error) {
+      console.error("Error logging out", error);
+      navigate('/');
+    }
+  };
+
+  const formatRupiah = (number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(number);
+  };
+
+  const stats = [
+    { label: 'Total Pasien', value: pasienCount, icon: '👤' },
+    { label: 'Total Dokter', value: dokterCount, icon: '🩺' },
+    { label: 'Total Jenis Obat', value: obatCount, icon: '💊' },
+    { label: 'Total Transaksi Hari ini', value: formatRupiah(todayTransaksi), icon: '🧾' },
+  ];
+
+  const dynamicBarData = {
+    labels: months,
+    datasets: [
+      {
+        label: 'Total Pendapatan',
+        data: chartData,
+        backgroundColor: '#166534',
+        borderRadius: 6,
+        barThickness: 32,
+      },
+    ],
   };
 
   return (
@@ -121,7 +180,7 @@ function Dashboard() {
         <div className="bg-white rounded-lg shadow p-6 flex-1 flex flex-col justify-end">
           <div className="mb-2 text-gray-400 font-semibold">Total Pendapatan per Bulan</div>
           <div className="flex-1 flex flex-col justify-end min-h-[300px]">
-            <Bar data={barData} options={barOptions} />
+            <Bar data={dynamicBarData} options={barOptions} />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow p-6 w-full lg:w-80">

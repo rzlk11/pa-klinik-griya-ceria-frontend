@@ -2,28 +2,34 @@ import React, { useState } from 'react';
 import doctorImg from '../assets/doctorImg.png';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function LoginForm() {
   const navigate = useNavigate();
-  const correctEmail = "test@gmail.com";
-  const correctPassword = "test";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loginMsg, setLoginMsg] = useState("");
 
-  function handleLogin(e) {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      if (email === correctEmail && password === correctPassword) {
-        setLoginMsg("");
-        navigate('/dashboard');
+    setLoginMsg("");
+    try {
+      await axios.post('http://localhost:5000/login', {
+        email: email,
+        password: password
+      }, { withCredentials: true });
+      navigate('/dashboard');
+    } catch (error) {
+      if (error.response) {
+        setLoginMsg(error.response.data.msg);
       } else {
-        setLoginMsg("Email atau Password Salah");
+        setLoginMsg("Terjadi kesalahan pada server");
       }
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   }
 
   return (
