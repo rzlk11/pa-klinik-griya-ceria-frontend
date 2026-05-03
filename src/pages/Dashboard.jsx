@@ -55,10 +55,10 @@ function Dashboard() {
     const fetchData = async () => {
       try {
         const [pasienRes, dokterRes, obatRes, transaksiRes] = await Promise.all([
-          axios.get('http://localhost:5000/pasien', { withCredentials: true }),
-          axios.get('http://localhost:5000/dokter', { withCredentials: true }),
-          axios.get('http://localhost:5000/obat', { withCredentials: true }),
-          axios.get('http://localhost:5000/transaksi', { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/dokter`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/obat`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/transaksi`, { withCredentials: true }),
         ]);
 
         setPasienCount(pasienRes.data.length);
@@ -104,7 +104,7 @@ function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await axios.delete('http://localhost:5000/logout', { withCredentials: true });
+      await axios.delete(`${import.meta.env.VITE_API_URL}/logout`, { withCredentials: true });
       navigate('/');
     } catch (error) {
       console.error("Error logging out", error);

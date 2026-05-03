@@ -16,7 +16,7 @@ function LoginForm() {
     setLoading(true);
     setLoginMsg("");
     try {
-      await axios.post('http://localhost:5000/login', {
+      await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
         email: email,
         password: password
       }, { withCredentials: true });
