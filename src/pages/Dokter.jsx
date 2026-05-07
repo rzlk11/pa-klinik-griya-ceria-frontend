@@ -15,11 +15,11 @@ function getStats(dokterList) {
     return acc;
   }, {});
   return [
-    { label: 'Total Dokter', value: totalDokter, icon: '🩺' },
+    { label: 'Total Dokter', value: totalDokter, icon: <i className="fa-solid fa-stethoscope"></i> },
     ...Object.entries(spesialisasiCount).map(([spesialisasi, count]) => ({
       label: `Dokter Spesialis ${spesialisasi}`,
       value: count,
-      icon: '🏷️',
+      icon: <i className="fa-solid fa-tags"></i>,
     })),
   ];
 }

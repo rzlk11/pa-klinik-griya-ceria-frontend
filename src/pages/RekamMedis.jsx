@@ -32,7 +32,7 @@ const initialRekamMedisList = [
 ];
 
 const stats = [
-  { label: 'Total Rekam Medis', value: initialRekamMedisList.length, icon: '📄' },
+  { label: 'Total Rekam Medis', value: initialRekamMedisList.length, icon: <i className="fa-solid fa-file-medical text-blue-600"></i> },
 ];
 
 function RekamMedis() {

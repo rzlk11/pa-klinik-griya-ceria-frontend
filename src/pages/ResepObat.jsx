@@ -31,10 +31,10 @@ const initialResepList = [
 ];
 
 const stats = [
-  { label: 'Total Resep', value: initialResepList.length, icon: '📝' },
-  { label: 'Aktif', value: initialResepList.filter(r => r.status_resep === 'Aktif').length, icon: '🟢' },
-  { label: 'Selesai', value: initialResepList.filter(r => r.status_resep === 'Selesai').length, icon: '✅' },
-  { label: 'Dibatalkan', value: initialResepList.filter(r => r.status_resep === 'Dibatalkan').length, icon: '❌' },
+  { label: 'Total Resep', value: initialResepList.length, icon: <i className="fa-solid fa-prescription text-blue-600"></i> },
+  { label: 'Aktif', value: initialResepList.filter(r => r.status_resep === 'Aktif').length, icon: <i className="fa-solid fa-circle text-green-500"></i> },
+  { label: 'Selesai', value: initialResepList.filter(r => r.status_resep === 'Selesai').length, icon: <i className="fa-solid fa-check-circle text-green-600"></i> },
+  { label: 'Dibatalkan', value: initialResepList.filter(r => r.status_resep === 'Dibatalkan').length, icon: <i className="fa-solid fa-times-circle text-red-500"></i> },
 ];
 
 function ResepObat() {

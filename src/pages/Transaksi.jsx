@@ -33,9 +33,9 @@ const initialTransaksiList = [
 
 // Example stats
 const getStats = (list) => [
-  { label: 'Total Transaksi', value: list.length, icon: '🧾' },
-  { label: 'Transaksi Lunas', value: list.filter(t => t.status_pembayaran === 'Lunas').length, icon: '✅' },
-  { label: 'Belum Lunas', value: list.filter(t => t.status_pembayaran === 'Belum lunas').length, icon: '⚠️' },
+  { label: 'Total Transaksi', value: list.length, icon: <i className="fa-solid fa-wallet text-blue-600"></i> },
+  { label: 'Transaksi Lunas', value: list.filter(t => t.status_pembayaran === 'Lunas').length, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
+  { label: 'Belum Lunas', value: list.filter(t => t.status_pembayaran === 'Belum lunas').length, icon: <i className="fa-solid fa-triangle-exclamation text-yellow-500"></i> },
 ];
 
 function Transaksi() {

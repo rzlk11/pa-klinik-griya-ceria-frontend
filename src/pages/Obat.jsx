@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
 const stats = [
-  { label: 'Total Obat', value: 6, icon: '💊' },
-  { label: 'Obat Stok Rendah', value: 2, icon: '⚠️' },
-  { label: 'Obat Stok Aman', value: 4, icon: '✅' },
+  { label: 'Total Obat', value: 6, icon: <i className="fa-solid fa-capsules"></i> },
+  { label: 'Obat Stok Rendah', value: 2, icon: <i className="fa-solid fa-triangle-exclamation text-yellow-500"></i> },
+  { label: 'Obat Stok Aman', value: 4, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
 ];
 
 // Example obat data based on ObatModel.js

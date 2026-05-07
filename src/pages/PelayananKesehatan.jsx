@@ -23,7 +23,7 @@ const initialPelayananList = [
 ];
 
 const getStats = (pelayananList) => [
-  { label: 'Total Pelayanan', value: pelayananList.length, icon: '🏥' },
+  { label: 'Total Pelayanan', value: pelayananList.length, icon: <i className="fa-solid fa-hospital text-blue-600"></i> },
 ];
 
 function PelayananKesehatan() {

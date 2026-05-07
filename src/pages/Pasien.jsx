@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
 const stats = [
-  { label: 'Total Pasien', value: 50, icon: '👤' },
-  { label: 'Pasien Laki-laki', value: 10, icon: '♂️' },
-  { label: 'Pasien Perempuan', value: 10, icon: '♀️' },
+  { label: 'Total Pasien', value: 50, icon: <i className="fa-solid fa-user-group"></i> },
+  { label: 'Pasien Laki-laki', value: 10, icon: <i className="fa-solid fa-mars text-blue-500"></i> },
+  { label: 'Pasien Perempuan', value: 10, icon: <i className="fa-solid fa-venus text-pink-500"></i> },
 ];
 
 // Example pasien data

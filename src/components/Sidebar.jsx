@@ -5,35 +5,36 @@ function Sidebar() {
   const location = useLocation();
 
   const menu = [
-    { to: '/dashboard', icon: '📊', label: 'Dashboard' },
-    { to: '/pasien', icon: '👤', label: 'Pasien' },
-    { to: '/dokter', icon: '🩺', label: 'Dokter' },
-    { to: '/obat', icon: '💊', label: 'Obat' },
-    { to: '/transaksi', icon: '🧾', label: 'Transaksi' },
-    { to: '/resep-obat', icon: '📝', label: 'Resep Obat' },
-    { to: '/rekam-medis', icon: '📄', label: 'Rekam Medis' },
-    { to: '/orang-tua', icon: '👥', label: 'Orang Tua Pasien' },
-    { to: '/pelayanan-kesehatan', icon: '🏥', label: 'Pelayanan Kesehatan' },
+    { to: '/dashboard', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
+    { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
+    { to: '/dokter', icon: <i className="fa-solid fa-stethoscope"></i>, label: 'Dokter' },
+    { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
+    { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
+    { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
+    { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
+    { to: '/orang-tua', icon: <i className="fa-solid fa-user-tie"></i>, label: 'Orang Tua Pasien' },
+    { to: '/pelayanan-kesehatan', icon: <i className="fa-solid fa-hospital"></i>, label: 'Pelayanan Kesehatan' },
   ];
 
   return (
-    <aside className="w-64 bg-white border-r min-h-screen">
-      <div className="p-6 font-bold text-xl text-green-800">Klinik Griya Ceria</div>
-      <nav className="mt-6">
-        <ul className="space-y-2 text-gray-700 text-base">
+    <aside className="w-64 bg-white border-r min-h-screen flex flex-col">
+      <div className="p-6 font-bold text-xl text-green-800 border-b border-gray-200">Klinik Griya Ceria</div>
+      <nav className="flex-1 overflow-y-auto py-4">
+        <div className="px-6 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Overview</div>
+        <ul className="space-y-1 text-gray-600 text-base">
           {menu.map((item, idx) => {
             const isActive = location.pathname === item.to;
             return (
               <li key={item.label}>
                 <Link
                   to={item.to}
-                  className={`flex items-center px-4 py-2 rounded ${
+                  className={`flex items-center px-6 py-3 transition-colors ${
                     isActive
-                      ? 'bg-green-100 text-green-800 font-semibold'
-                      : 'hover:bg-gray-100'
+                      ? 'bg-green-100 text-green-800 font-semibold border-l-4 border-green-600'
+                      : 'hover:bg-gray-50 hover:text-green-800 border-l-4 border-transparent'
                   }`}
                 >
-                  <span className="mr-3">{item.icon}</span> {item.label}
+                  <span className="mr-3 w-5 text-center">{item.icon}</span> {item.label}
                 </Link>
               </li>
             );

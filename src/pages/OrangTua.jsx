@@ -24,10 +24,10 @@ const initialOrangTuaList = [
 
 function getStats(list) {
   return [
-    { label: 'Total Orang Tua', value: list.length, icon: '👪' },
-    { label: 'Ayah', value: list.filter(o => o.relation === 'ayah').length, icon: '👨' },
-    { label: 'Ibu', value: list.filter(o => o.relation === 'ibu').length, icon: '👩' },
-    { label: 'Wali', value: list.filter(o => o.relation === 'wali').length, icon: '🧑‍🤝‍🧑' },
+    { label: 'Total Orang Tua', value: list.length, icon: <i className="fa-solid fa-users"></i> },
+    { label: 'Ayah', value: list.filter(o => o.relation === 'ayah').length, icon: <i className="fa-solid fa-person"></i> },
+    { label: 'Ibu', value: list.filter(o => o.relation === 'ibu').length, icon: <i className="fa-solid fa-person-dress"></i> },
+    { label: 'Wali', value: list.filter(o => o.relation === 'wali').length, icon: <i className="fa-solid fa-handshake"></i> },
   ];
 }
 
