@@ -1,26 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Example data with id (gunakan id, bukan uuid)
-const initialOrangTuaList = [
-  {
-    id: 1,
-    name: 'Budi',
-    relation: 'ayah',
-    phone: '081234567890',
-  },
-  {
-    id: 2,
-    name: 'Dewi',
-    relation: 'ibu',
-    phone: '081234567891',
-  },
-  {
-    id: 3,
-    name: 'Sari',
-    relation: 'wali',
-    phone: '081234567892',
-  },
-];
 
 function getStats(list) {
   return [
@@ -32,10 +12,23 @@ function getStats(list) {
 }
 
 function OrangTua() {
-  const [orangTuaList, setOrangTuaList] = useState(initialOrangTuaList);
+  const [orangTuaList, setOrangTuaList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedOrangTua, setSelectedOrangTua] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/orangtua`, { withCredentials: true });
+      setOrangTuaList(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const stats = getStats(orangTuaList);
 
@@ -62,36 +55,30 @@ function OrangTua() {
     setSelectedOrangTua(null);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newOrangTua = {
-        id: orangTuaList.length > 0 ? Math.max(...orangTuaList.map(o => o.id)) + 1 : 1,
-        name: form.name.value,
-        relation: form.relation.value,
-        phone: form.phone.value,
-      };
-      setOrangTuaList([...orangTuaList, newOrangTua]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setOrangTuaList(
-        orangTuaList.map((o) =>
-          o.id === selectedOrangTua.id
-            ? {
-                ...o,
-                name: form.name.value,
-                relation: form.relation.value,
-                phone: form.phone.value,
-              }
-            : o
-        )
-      );
-    } else if (modalType === 'delete') {
-      setOrangTuaList(orangTuaList.filter((o) => o.id !== selectedOrangTua.id));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/orangtua/${selectedOrangTua.id}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          name: form.name.value,
+          relation: form.relation.value,
+          phone: form.phone.value,
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/orangtua`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/orangtua/${selectedOrangTua.id}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedOrangTua(null);
   };
 
   return (
@@ -186,8 +173,8 @@ function OrangTua() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'

@@ -1,35 +1,5 @@
-import React, { useState } from 'react';
-
-// Example transaksi data based on the model and associations
-const initialTransaksiList = [
-  {
-    id_transaksi: 1,
-    pasien: { nama: 'Ahmad' },
-    pelayanan: { nama_pelayanan: 'Konsultasi Umum' },
-    resep: { kode_resep: 'RSP001' },
-    tanggal_transaksi: '2024-06-01',
-    total_biaya: 150000,
-    status_pembayaran: 'Lunas',
-  },
-  {
-    id_transaksi: 2,
-    pasien: { nama: 'Siti' },
-    pelayanan: { nama_pelayanan: 'Pemeriksaan Gigi' },
-    resep: { kode_resep: 'RSP002' },
-    tanggal_transaksi: '2024-06-02',
-    total_biaya: 200000,
-    status_pembayaran: 'Belum lunas',
-  },
-  {
-    id_transaksi: 3,
-    pasien: { nama: 'Rizky' },
-    pelayanan: { nama_pelayanan: 'Imunisasi' },
-    resep: { kode_resep: 'RSP003' },
-    tanggal_transaksi: '2024-06-03',
-    total_biaya: 100000,
-    status_pembayaran: 'Lunas',
-  },
-];
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 // Example stats
 const getStats = (list) => [
@@ -39,22 +9,55 @@ const getStats = (list) => [
 ];
 
 function Transaksi() {
-  const [transaksiList, setTransaksiList] = useState(initialTransaksiList);
+  const [transaksiList, setTransaksiList] = useState([]);
+  const [pasienList, setPasienList] = useState([]);
+  const [pelayananList, setPelayananList] = useState([]);
+  const [resepList, setResepList] = useState([]);
+  
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedTransaksi, setSelectedTransaksi] = useState(null);
+
+  const [previewImage, setPreviewImage] = useState('');
+  const [fileImage, setFileImage] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const trxRes = await axios.get(`${import.meta.env.VITE_API_URL}/transaksi`, { withCredentials: true });
+      setTransaksiList(trxRes.data);
+
+      const pasRes = await axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true });
+      setPasienList(pasRes.data);
+
+      const pelRes = await axios.get(`${import.meta.env.VITE_API_URL}/pelayanan`, { withCredentials: true });
+      setPelayananList(pelRes.data);
+
+      const resRes = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true });
+      setResepList(resRes.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const stats = getStats(transaksiList);
 
   const handleAdd = () => {
     setModalType('add');
     setSelectedTransaksi(null);
+    setPreviewImage('');
+    setFileImage('');
     setShowModal(true);
   };
 
   const handleEdit = (trx) => {
     setModalType('edit');
     setSelectedTransaksi(trx);
+    setPreviewImage(trx.bukti_transaksi || '');
+    setFileImage('');
     setShowModal(true);
   };
 
@@ -67,44 +70,54 @@ function Transaksi() {
   const handleModalClose = () => {
     setShowModal(false);
     setSelectedTransaksi(null);
+    setPreviewImage('');
+    setFileImage('');
   };
 
-  const handleModalSubmit = (e) => {
+  const loadImage = (e) => {
+    const image = e.target.files[0];
+    setFileImage(image);
+    if(image) setPreviewImage(URL.createObjectURL(image));
+  };
+
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newTrx = {
-        id_transaksi: transaksiList.length > 0 ? Math.max(...transaksiList.map(t => t.id_transaksi)) + 1 : 1,
-        pasien: { nama: form.pasien_nama.value },
-        pelayanan: { nama_pelayanan: form.pelayanan_nama.value },
-        resep: { kode_resep: form.kode_resep.value },
-        tanggal_transaksi: form.tanggal_transaksi.value,
-        total_biaya: Number(form.total_biaya.value),
-        status_pembayaran: form.status_pembayaran.value,
-      };
-      setTransaksiList([...transaksiList, newTrx]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setTransaksiList(
-        transaksiList.map((t) =>
-          t.id_transaksi === selectedTransaksi.id_transaksi
-            ? {
-                ...t,
-                pasien: { nama: form.pasien_nama.value },
-                pelayanan: { nama_pelayanan: form.pelayanan_nama.value },
-                resep: { kode_resep: form.kode_resep.value },
-                tanggal_transaksi: form.tanggal_transaksi.value,
-                total_biaya: Number(form.total_biaya.value),
-                status_pembayaran: form.status_pembayaran.value,
-              }
-            : t
-        )
-      );
-    } else if (modalType === 'delete') {
-      setTransaksiList(transaksiList.filter((t) => t.id_transaksi !== selectedTransaksi.id_transaksi));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/transaksi/${selectedTransaksi.id_transaksi}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const formData = new FormData();
+        
+        if(form.id_pasien.value) formData.append("id_pasien", form.id_pasien.value);
+        if(form.id_pelayanan.value) formData.append("id_pelayanan", form.id_pelayanan.value);
+        if(form.id_resep.value) formData.append("id_resep", form.id_resep.value);
+        
+        formData.append("tanggal_transaksi", form.tanggal_transaksi.value);
+        formData.append("total_biaya", form.total_biaya.value);
+        formData.append("status_pembayaran", form.status_pembayaran.value);
+        if (fileImage) {
+          formData.append("bukti_transaksi", fileImage);
+        }
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/transaksi`, formData, { 
+            headers: { 'Content-Type': 'multipart/form-data' },
+            withCredentials: true 
+          });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/transaksi/${selectedTransaksi.id_transaksi}`, formData, { 
+            headers: { 'Content-Type': 'multipart/form-data' },
+            withCredentials: true 
+          });
+        }
+      }
+      
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedTransaksi(null);
   };
 
   return (
@@ -147,7 +160,7 @@ function Transaksi() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
         <table className="min-w-full table-auto">
           <thead>
             <tr className="border-b">
@@ -158,13 +171,14 @@ function Transaksi() {
               <th className="px-4 py-2 text-left text-green-800">Tanggal</th>
               <th className="px-4 py-2 text-left text-green-800">Total Biaya</th>
               <th className="px-4 py-2 text-left text-green-800">Status</th>
+              <th className="px-4 py-2 text-left text-green-800">Bukti</th>
               <th className="px-4 py-2 text-left text-green-800">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {transaksiList.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center text-gray-400 py-8">
+                <td colSpan={9} className="text-center text-gray-400 py-8">
                   Belum ada data transaksi.
                 </td>
               </tr>
@@ -172,9 +186,9 @@ function Transaksi() {
               transaksiList.map((trx) => (
                 <tr key={trx.id_transaksi} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">{trx.id_transaksi}</td>
-                  <td className="px-4 py-2">{trx.pasien?.nama || '-'}</td>
+                  <td className="px-4 py-2">{trx.pasien?.name || '-'}</td>
                   <td className="px-4 py-2">{trx.pelayanan?.nama_pelayanan || '-'}</td>
-                  <td className="px-4 py-2">{trx.resep?.kode_resep || '-'}</td>
+                  <td className="px-4 py-2">{trx.resep?.id_resep || '-'}</td>
                   <td className="px-4 py-2">{trx.tanggal_transaksi}</td>
                   <td className="px-4 py-2">
                     Rp {Number(trx.total_biaya).toLocaleString('id-ID')}
@@ -183,6 +197,15 @@ function Transaksi() {
                     <span className={trx.status_pembayaran === 'Lunas' ? 'text-green-700 font-semibold' : 'text-yellow-700 font-semibold'}>
                       {trx.status_pembayaran}
                     </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    {trx.bukti_transaksi ? (
+                      <a href={trx.bukti_transaksi} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">
+                        Lihat Bukti
+                      </a>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="px-4 py-2">
                     <button
@@ -203,16 +226,12 @@ function Transaksi() {
             )}
           </tbody>
         </table>
-        {/* Empty state */}
-        {transaksiList.length === 0 && (
-          <div className="text-center text-gray-400 py-8">Belum ada data transaksi.</div>
-        )}
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'
@@ -221,7 +240,7 @@ function Transaksi() {
                   ? 'Edit Transaksi'
                   : 'Hapus Transaksi'}
               </h3>
-              <button onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+              <button type="button" onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             {modalType === 'delete' ? (
               <form onSubmit={handleModalSubmit}>
@@ -247,31 +266,43 @@ function Transaksi() {
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
-                  <label className="block mb-1">Nama Pasien</label>
-                  <input
-                    name="pasien_nama"
-                    defaultValue={selectedTransaksi?.pasien?.nama || ''}
-                    required
+                  <label className="block mb-1">Pasien</label>
+                  <select
+                    name="id_pasien"
+                    defaultValue={selectedTransaksi?.id_pasien || ''}
                     className="w-full border px-3 py-2 rounded"
-                  />
+                  >
+                    <option value="">-- Pilih Pasien --</option>
+                    {pasienList.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block mb-1">Nama Pelayanan</label>
-                  <input
-                    name="pelayanan_nama"
-                    defaultValue={selectedTransaksi?.pelayanan?.nama_pelayanan || ''}
-                    required
+                  <label className="block mb-1">Pelayanan</label>
+                  <select
+                    name="id_pelayanan"
+                    defaultValue={selectedTransaksi?.id_pelayanan || ''}
                     className="w-full border px-3 py-2 rounded"
-                  />
+                  >
+                    <option value="">-- Pilih Pelayanan --</option>
+                    {pelayananList.map(p => (
+                      <option key={p.id_pelayanan} value={p.id_pelayanan}>{p.nama_pelayanan}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block mb-1">Kode Resep</label>
-                  <input
-                    name="kode_resep"
-                    defaultValue={selectedTransaksi?.resep?.kode_resep || ''}
-                    required
+                  <label className="block mb-1">Resep</label>
+                  <select
+                    name="id_resep"
+                    defaultValue={selectedTransaksi?.id_resep || ''}
                     className="w-full border px-3 py-2 rounded"
-                  />
+                  >
+                    <option value="">-- Pilih Resep --</option>
+                    {resepList.map(r => (
+                      <option key={r.id_resep} value={r.id_resep}>{r.id_resep}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block mb-1">Tanggal Transaksi</label>
@@ -307,7 +338,24 @@ function Transaksi() {
                     <option value="Belum lunas">Belum lunas</option>
                   </select>
                 </div>
-                <div className="flex justify-end gap-2">
+                <div>
+                  <label className="block mb-1">Bukti Transaksi</label>
+                  <input
+                    type="file"
+                    name="bukti_transaksi"
+                    accept="image/*"
+                    onChange={loadImage}
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                  {previewImage ? (
+                    <figure className="mt-2">
+                      <img src={previewImage} alt="Preview Bukti" className="w-32 h-32 object-cover rounded shadow" />
+                    </figure>
+                  ) : (
+                    ""
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={handleModalClose}

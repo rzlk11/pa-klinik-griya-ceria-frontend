@@ -1,45 +1,42 @@
-import React, { useState } from 'react';
+  import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Example data based on RekamMedisModel.js and associations
-const initialRekamMedisList = [
-  {
-    id_rekam_medis: 1,
-    pasien: { name: 'Ahmad', gender: 'L', date_of_birth: '2012-01-01' },
-    dokter: { nama_dokter: 'Dr. Andi' },
-    pelayanan: { nama_pelayanan: 'Konsultasi Umum' },
-    diagnosa: 'Demam dan batuk',
-    tindakan: 'Pemberian obat penurun panas',
-    catatan: 'Kontrol kembali jika tidak membaik',
-  },
-  {
-    id_rekam_medis: 2,
-    pasien: { name: 'Siti', gender: 'P', date_of_birth: '2014-03-12' },
-    dokter: { nama_dokter: 'Dr. Dewi' },
-    pelayanan: { nama_pelayanan: 'Pemeriksaan Gigi' },
-    diagnosa: 'Gigi berlubang',
-    tindakan: 'Penambalan gigi',
-    catatan: 'Jaga kebersihan gigi',
-  },
-  {
-    id_rekam_medis: 3,
-    pasien: { name: 'Rizky', gender: 'L', date_of_birth: '2016-07-21' },
-    dokter: { nama_dokter: 'Dr. Budi' },
-    pelayanan: { nama_pelayanan: 'Imunisasi' },
-    diagnosa: 'Sehat',
-    tindakan: 'Imunisasi campak',
-    catatan: '',
-  },
-];
-
-const stats = [
-  { label: 'Total Rekam Medis', value: initialRekamMedisList.length, icon: <i className="fa-solid fa-file-medical text-blue-600"></i> },
+const getStats = (list) => [
+  { label: 'Total Rekam Medis', value: list.length, icon: <i className="fa-solid fa-file-medical text-blue-600"></i> },
 ];
 
 function RekamMedis() {
-  const [rekamMedisList, setRekamMedisList] = useState(initialRekamMedisList);
+  const [rekamMedisList, setRekamMedisList] = useState([]);
+  const [pasienList, setPasienList] = useState([]);
+  const [dokterList, setDokterList] = useState([]);
+  const [pelayananList, setPelayananList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedRekamMedis, setSelectedRekamMedis] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true });
+      setRekamMedisList(response.data);
+
+      const pasienRes = await axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true });
+      setPasienList(pasienRes.data);
+
+      const dokterRes = await axios.get(`${import.meta.env.VITE_API_URL}/dokter`, { withCredentials: true });
+      setDokterList(dokterRes.data);
+
+      const pelayananRes = await axios.get(`${import.meta.env.VITE_API_URL}/pelayanan`, { withCredentials: true });
+      setPelayananList(pelayananRes.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const stats = getStats(rekamMedisList);
 
   const handleAdd = () => {
     setModalType('add');
@@ -64,50 +61,33 @@ function RekamMedis() {
     setSelectedRekamMedis(null);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newRM = {
-        id_rekam_medis: rekamMedisList.length > 0 ? Math.max(...rekamMedisList.map(rm => rm.id_rekam_medis)) + 1 : 1,
-        pasien: {
-          name: form.pasien_name.value,
-          gender: form.pasien_gender.value,
-          date_of_birth: form.pasien_date_of_birth.value,
-        },
-        dokter: { nama_dokter: form.dokter_nama.value },
-        pelayanan: { nama_pelayanan: form.pelayanan_nama.value },
-        diagnosa: form.diagnosa.value,
-        tindakan: form.tindakan.value,
-        catatan: form.catatan.value,
-      };
-      setRekamMedisList([...rekamMedisList, newRM]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setRekamMedisList(
-        rekamMedisList.map((rm) =>
-          rm.id_rekam_medis === selectedRekamMedis.id_rekam_medis
-            ? {
-                ...rm,
-                pasien: {
-                  name: form.pasien_name.value,
-                  gender: form.pasien_gender.value,
-                  date_of_birth: form.pasien_date_of_birth.value,
-                },
-                dokter: { nama_dokter: form.dokter_nama.value },
-                pelayanan: { nama_pelayanan: form.pelayanan_nama.value },
-                diagnosa: form.diagnosa.value,
-                tindakan: form.tindakan.value,
-                catatan: form.catatan.value,
-              }
-            : rm
-        )
-      );
-    } else if (modalType === 'delete') {
-      setRekamMedisList(rekamMedisList.filter((rm) => rm.id_rekam_medis !== selectedRekamMedis.id_rekam_medis));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/rekam-medis/${selectedRekamMedis.id_rekam_medis}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          diagnosa: form.diagnosa.value,
+          tindakan: form.tindakan.value,
+          catatan: form.catatan.value,
+          id_pasien: Number(form.id_pasien.value),
+          id_dokter: Number(form.id_dokter.value),
+          id_pelayanan: Number(form.id_pelayanan.value),
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/rekam-medis`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/rekam-medis/${selectedRekamMedis.id_rekam_medis}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedRekamMedis(null);
   };
 
   return (
@@ -214,8 +194,8 @@ function RekamMedis() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'
@@ -250,54 +230,46 @@ function RekamMedis() {
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
-                  <label className="block mb-1">Nama Pasien</label>
-                  <input
-                    name="pasien_name"
-                    defaultValue={selectedRekamMedis?.pasien?.name || ''}
-                    required
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Jenis Kelamin</label>
+                  <label className="block mb-1">Pasien</label>
                   <select
-                    name="pasien_gender"
-                    defaultValue={selectedRekamMedis?.pasien?.gender || ''}
+                    name="id_pasien"
+                    defaultValue={selectedRekamMedis?.id_pasien || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   >
-                    <option value="">Pilih</option>
-                    <option value="L">Laki-laki</option>
-                    <option value="P">Perempuan</option>
+                    <option value="">-- Pilih Pasien --</option>
+                    {pasienList.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-1">Tanggal Lahir</label>
-                  <input
-                    name="pasien_date_of_birth"
-                    type="date"
-                    defaultValue={selectedRekamMedis?.pasien?.date_of_birth || ''}
+                  <label className="block mb-1">Dokter</label>
+                  <select
+                    name="id_dokter"
+                    defaultValue={selectedRekamMedis?.id_dokter || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
-                  />
+                  >
+                    <option value="">-- Pilih Dokter --</option>
+                    {dokterList.map((d) => (
+                      <option key={d.id_dokter} value={d.id_dokter}>{d.nama_dokter}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block mb-1">Nama Dokter</label>
-                  <input
-                    name="dokter_nama"
-                    defaultValue={selectedRekamMedis?.dokter?.nama_dokter || ''}
+                  <label className="block mb-1">Pelayanan</label>
+                  <select
+                    name="id_pelayanan"
+                    defaultValue={selectedRekamMedis?.id_pelayanan || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Nama Pelayanan</label>
-                  <input
-                    name="pelayanan_nama"
-                    defaultValue={selectedRekamMedis?.pelayanan?.nama_pelayanan || ''}
-                    required
-                    className="w-full border px-3 py-2 rounded"
-                  />
+                  >
+                    <option value="">-- Pilih Pelayanan --</option>
+                    {pelayananList.map((p) => (
+                      <option key={p.id_pelayanan} value={p.id_pelayanan}>{p.nama_pelayanan}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block mb-1">Diagnosa</label>

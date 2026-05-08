@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const stats = [
   { label: 'Total Obat', value: 6, icon: <i className="fa-solid fa-capsules"></i> },
@@ -6,63 +7,25 @@ const stats = [
   { label: 'Obat Stok Aman', value: 4, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
 ];
 
-// Example obat data based on ObatModel.js
-const initialObatList = [
-  {
-    id_obat: 1,
-    nama_obat: 'Paracetamol',
-    jenis: 'Tablet',
-    stok: 5,
-    harga_per_unit: 1500.0,
-    satuan: 'Strip',
-  },
-  {
-    id_obat: 2,
-    nama_obat: 'Amoxicillin',
-    jenis: 'Kapsul',
-    stok: 10,
-    harga_per_unit: 2000.0,
-    satuan: 'Strip',
-  },
-  {
-    id_obat: 3,
-    nama_obat: 'Ibuprofen',
-    jenis: 'Tablet',
-    stok: 15,
-    harga_per_unit: 1800.0,
-    satuan: 'Strip',
-  },
-  {
-    id_obat: 4,
-    nama_obat: 'Cetirizine',
-    jenis: 'Tablet',
-    stok: 20,
-    harga_per_unit: 2500.0,
-    satuan: 'Strip',
-  },
-  {
-    id_obat: 5,
-    nama_obat: 'Salbutamol',
-    jenis: 'Sirup',
-    stok: 40,
-    harga_per_unit: 12000.0,
-    satuan: 'Botol',
-  },
-  {
-    id_obat: 6,
-    nama_obat: 'Betadine',
-    jenis: 'Salep',
-    stok: 40,
-    harga_per_unit: 10000.0,
-    satuan: 'Tube',
-  },
-];
 
 function Obat() {
-  const [obatList, setObatList] = useState(initialObatList);
+  const [obatList, setObatList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedObat, setSelectedObat] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/obat`, { withCredentials: true });
+      setObatList(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleAdd = () => {
     setModalType('add');
@@ -87,40 +50,32 @@ function Obat() {
     setSelectedObat(null);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newObat = {
-        id_obat: obatList.length > 0 ? Math.max(...obatList.map(o => o.id_obat)) + 1 : 1,
-        nama_obat: form.nama_obat.value,
-        jenis: form.jenis.value,
-        stok: Number(form.stok.value),
-        harga_per_unit: Number(form.harga_per_unit.value),
-        satuan: form.satuan.value,
-      };
-      setObatList([...obatList, newObat]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setObatList(
-        obatList.map((o) =>
-          o.id_obat === selectedObat.id_obat
-            ? {
-                ...o,
-                nama_obat: form.nama_obat.value,
-                jenis: form.jenis.value,
-                stok: Number(form.stok.value),
-                harga_per_unit: Number(form.harga_per_unit.value),
-                satuan: form.satuan.value,
-              }
-            : o
-        )
-      );
-    } else if (modalType === 'delete') {
-      setObatList(obatList.filter((o) => o.id_obat !== selectedObat.id_obat));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/obat/${selectedObat.id_obat}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          nama_obat: form.nama_obat.value,
+          jenis: form.jenis.value,
+          stok: Number(form.stok.value),
+          harga_per_unit: Number(form.harga_per_unit.value),
+          satuan: form.satuan.value,
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/obat`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/obat/${selectedObat.id_obat}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedObat(null);
   };
 
   return (
@@ -221,8 +176,8 @@ function Obat() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'

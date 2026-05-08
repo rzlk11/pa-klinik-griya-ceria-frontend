@@ -1,52 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const stats = [
-  { label: 'Total Pasien', value: 50, icon: <i className="fa-solid fa-user-group"></i> },
-  { label: 'Pasien Laki-laki', value: 10, icon: <i className="fa-solid fa-mars text-blue-500"></i> },
-  { label: 'Pasien Perempuan', value: 10, icon: <i className="fa-solid fa-venus text-pink-500"></i> },
+const getStats = (list) => [
+  { label: 'Total Pasien', value: list.length, icon: <i className="fa-solid fa-user-group text-blue-600"></i> },
+  { label: 'Pasien Laki-laki', value: list.filter(p => p.gender === 'L').length, icon: <i className="fa-solid fa-mars text-blue-500"></i> },
+  { label: 'Pasien Perempuan', value: list.filter(p => p.gender === 'P').length, icon: <i className="fa-solid fa-venus text-pink-500"></i> },
 ];
 
-// Example pasien data
-const initialPasienList = [
-  {
-    id: 1,
-    nama: 'Ahmad',
-    usia: 12,
-    jenis_kelamin: 'Laki-laki',
-    orang_tua: 'Budi',
-    no_telp: '081234567890',
-  },
-  {
-    id: 2,
-    nama: 'Siti',
-    usia: 10,
-    jenis_kelamin: 'Perempuan',
-    orang_tua: 'Dewi',
-    no_telp: '081234567891',
-  },
-  {
-    id: 3,
-    nama: 'Rizky',
-    usia: 8,
-    jenis_kelamin: 'Laki-laki',
-    orang_tua: 'Andi',
-    no_telp: '081234567892',
-  },
-  {
-    id: 4,
-    nama: 'Ayu',
-    usia: 9,
-    jenis_kelamin: 'Perempuan',
-    orang_tua: 'Sari',
-    no_telp: '081234567893',
-  },
-];
+const calculateAge = (dob) => {
+  if (!dob) return '-';
+  const diffMs = Date.now() - new Date(dob).getTime();
+  const ageDt = new Date(diffMs); 
+  return Math.abs(ageDt.getUTCFullYear() - 1970);
+};
 
 function Pasien() {
-  const [pasienList, setPasienList] = useState(initialPasienList);
+  const [pasienList, setPasienList] = useState([]);
+  const [orangTuaList, setOrangTuaList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedPasien, setSelectedPasien] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true });
+      setPasienList(response.data);
+
+      const otResponse = await axios.get(`${import.meta.env.VITE_API_URL}/orangtua`, { withCredentials: true });
+      setOrangTuaList(otResponse.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleAdd = () => {
     setModalType('add');
@@ -71,44 +60,35 @@ function Pasien() {
     setSelectedPasien(null);
   };
 
-  // Dummy handlers for demo
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      // Add logic here
-      const form = e.target;
-      const newPasien = {
-        id: pasienList.length + 1,
-        nama: form.nama.value,
-        usia: form.usia.value,
-        jenis_kelamin: form.jenis_kelamin.value,
-        orang_tua: form.orang_tua.value,
-        no_telp: form.no_telp.value,
-      };
-      setPasienList([...pasienList, newPasien]);
-    } else if (modalType === 'edit') {
-      // Edit logic here
-      const form = e.target;
-      setPasienList(
-        pasienList.map((p) =>
-          p.id === selectedPasien.id
-            ? {
-                ...p,
-                nama: form.nama.value,
-                usia: form.usia.value,
-                jenis_kelamin: form.jenis_kelamin.value,
-                orang_tua: form.orang_tua.value,
-                no_telp: form.no_telp.value,
-              }
-            : p
-        )
-      );
-    } else if (modalType === 'delete') {
-      setPasienList(pasienList.filter((p) => p.id !== selectedPasien.id));
+    try {
+      if (modalType === 'delete') {
+        // Backend delete uses uuid
+        await axios.delete(`${import.meta.env.VITE_API_URL}/pasien/${selectedPasien.uuid}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          name: form.name.value,
+          date_of_birth: form.date_of_birth.value,
+          gender: form.gender.value,
+          orangTuaId: Number(form.orangTuaId.value),
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/pasien`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/pasien/${selectedPasien.uuid}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedPasien(null);
   };
+
+  const stats = getStats(pasienList);
 
   return (
     <div>
@@ -154,31 +134,29 @@ function Pasien() {
         <table className="min-w-full table-auto">
           <thead>
             <tr className="border-b">
-              <th className="px-4 py-2 text-left text-green-800">ID</th>
               <th className="px-4 py-2 text-left text-green-800">Nama Pasien</th>
               <th className="px-4 py-2 text-left text-green-800">Usia</th>
+              <th className="px-4 py-2 text-left text-green-800">Tanggal Lahir</th>
               <th className="px-4 py-2 text-left text-green-800">Jenis Kelamin</th>
               <th className="px-4 py-2 text-left text-green-800">Orang Tua</th>
-              <th className="px-4 py-2 text-left text-green-800">No Telp</th>
               <th className="px-4 py-2 text-left text-green-800">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {pasienList.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center text-gray-400 py-8">
+                <td colSpan={6} className="text-center text-gray-400 py-8">
                   Belum ada data pasien.
                 </td>
               </tr>
             ) : (
               pasienList.map((pasien) => (
                 <tr key={pasien.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">{pasien.id}</td>
-                  <td className="px-4 py-2">{pasien.nama}</td>
-                  <td className="px-4 py-2">{pasien.usia}</td>
-                  <td className="px-4 py-2">{pasien.jenis_kelamin}</td>
-                  <td className="px-4 py-2">{pasien.orang_tua}</td>
-                  <td className="px-4 py-2">{pasien.no_telp}</td>
+                  <td className="px-4 py-2">{pasien.name}</td>
+                  <td className="px-4 py-2">{calculateAge(pasien.date_of_birth)} Tahun</td>
+                  <td className="px-4 py-2">{pasien.date_of_birth}</td>
+                  <td className="px-4 py-2">{pasien.gender === 'L' ? 'Laki-laki' : pasien.gender === 'P' ? 'Perempuan' : '-'}</td>
+                  <td className="px-4 py-2">{pasien.orang_tua?.name || '-'}</td>
                   <td className="px-4 py-2">
                     <button
                       className="text-blue-600 hover:underline mr-2"
@@ -198,16 +176,12 @@ function Pasien() {
             )}
           </tbody>
         </table>
-        {/* Empty state */}
-        {pasienList.length === 0 && (
-          <div className="text-center text-gray-400 py-8">Belum ada data pasien.</div>
-        )}
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'
@@ -221,7 +195,7 @@ function Pasien() {
             {modalType === 'delete' ? (
               <form onSubmit={handleModalSubmit}>
                 <p className="mb-6">
-                  Apakah Anda yakin ingin menghapus pasien <b>{selectedPasien?.nama}</b>?
+                  Apakah Anda yakin ingin menghapus pasien <b>{selectedPasien?.name}</b>?
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
@@ -244,19 +218,18 @@ function Pasien() {
                 <div>
                   <label className="block mb-1">Nama Pasien</label>
                   <input
-                    name="nama"
-                    defaultValue={selectedPasien?.nama || ''}
+                    name="name"
+                    defaultValue={selectedPasien?.name || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
                 </div>
                 <div>
-                  <label className="block mb-1">Usia</label>
+                  <label className="block mb-1">Tanggal Lahir</label>
                   <input
-                    name="usia"
-                    type="number"
-                    min={0}
-                    defaultValue={selectedPasien?.usia || ''}
+                    name="date_of_birth"
+                    type="date"
+                    defaultValue={selectedPasien?.date_of_birth || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
@@ -264,33 +237,31 @@ function Pasien() {
                 <div>
                   <label className="block mb-1">Jenis Kelamin</label>
                   <select
-                    name="jenis_kelamin"
-                    defaultValue={selectedPasien?.jenis_kelamin || ''}
+                    name="gender"
+                    defaultValue={selectedPasien?.gender || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   >
                     <option value="">Pilih</option>
-                    <option value="Laki-laki">Laki-laki</option>
-                    <option value="Perempuan">Perempuan</option>
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
                   </select>
                 </div>
                 <div>
                   <label className="block mb-1">Orang Tua</label>
-                  <input
-                    name="orang_tua"
-                    defaultValue={selectedPasien?.orang_tua || ''}
+                  <select
+                    name="orangTuaId"
+                    defaultValue={selectedPasien?.orang_tua?.id || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">No Telp</label>
-                  <input
-                    name="no_telp"
-                    defaultValue={selectedPasien?.no_telp || ''}
-                    required
-                    className="w-full border px-3 py-2 rounded"
-                  />
+                  >
+                    <option value="">Pilih Orang Tua</option>
+                    {orangTuaList.map((ot) => (
+                      <option key={ot.id} value={ot.id}>
+                        {ot.name} ({ot.relation})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button

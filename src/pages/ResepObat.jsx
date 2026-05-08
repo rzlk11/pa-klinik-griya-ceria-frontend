@@ -1,47 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Example data based on ResepObatModel.js and relation to DetailResepObat
-const initialResepList = [
-  {
-    id_resep: 1,
-    id_rekam_medis: 101,
-    tanggal_resep: '2024-06-01',
-    status_resep: 'Aktif',
-    details: [
-      { id: 1, nama_obat: 'Paracetamol', dosis: '3x1', jumlah: 10, satuan: 'Tablet' },
-      { id: 2, nama_obat: 'Amoxicillin', dosis: '2x1', jumlah: 10, satuan: 'Kapsul' },
-    ],
-  },
-  {
-    id_resep: 2,
-    id_rekam_medis: 102,
-    tanggal_resep: '2024-06-02',
-    status_resep: 'Selesai',
-    details: [
-      { id: 3, nama_obat: 'Ibuprofen', dosis: '3x1', jumlah: 10, satuan: 'Tablet' },
-    ],
-  },
-  {
-    id_resep: 3,
-    id_rekam_medis: 103,
-    tanggal_resep: '2024-06-03',
-    status_resep: 'Dibatalkan',
-    details: [],
-  },
-];
-
-const stats = [
-  { label: 'Total Resep', value: initialResepList.length, icon: <i className="fa-solid fa-prescription text-blue-600"></i> },
-  { label: 'Aktif', value: initialResepList.filter(r => r.status_resep === 'Aktif').length, icon: <i className="fa-solid fa-circle text-green-500"></i> },
-  { label: 'Selesai', value: initialResepList.filter(r => r.status_resep === 'Selesai').length, icon: <i className="fa-solid fa-check-circle text-green-600"></i> },
-  { label: 'Dibatalkan', value: initialResepList.filter(r => r.status_resep === 'Dibatalkan').length, icon: <i className="fa-solid fa-times-circle text-red-500"></i> },
+const getStats = (list) => [
+  { label: 'Total Resep', value: list.length, icon: <i className="fa-solid fa-prescription text-blue-600"></i> },
+  { label: 'Aktif', value: list.filter(r => r.status_resep === 'Aktif').length, icon: <i className="fa-solid fa-circle text-green-500"></i> },
+  { label: 'Selesai', value: list.filter(r => r.status_resep === 'Selesai').length, icon: <i className="fa-solid fa-check-circle text-green-600"></i> },
+  { label: 'Dibatalkan', value: list.filter(r => r.status_resep === 'Dibatalkan').length, icon: <i className="fa-solid fa-times-circle text-red-500"></i> },
 ];
 
 function ResepObat() {
-  const [resepList, setResepList] = useState(initialResepList);
+  const [resepList, setResepList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedResep, setSelectedResep] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true });
+      // Ensure details array exists for UI mapping
+      const dataWithDetails = response.data.map(item => ({
+        ...item,
+        details: item.details || []
+      }));
+      setResepList(dataWithDetails);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const stats = getStats(resepList);
 
   const handleAdd = () => {
     setModalType('add');
@@ -66,37 +57,30 @@ function ResepObat() {
     setSelectedResep(null);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newResep = {
-        id_resep: resepList.length > 0 ? Math.max(...resepList.map(r => r.id_resep)) + 1 : 1,
-        id_rekam_medis: Number(form.id_rekam_medis.value),
-        tanggal_resep: form.tanggal_resep.value,
-        status_resep: form.status_resep.value,
-        details: [],
-      };
-      setResepList([...resepList, newResep]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setResepList(
-        resepList.map((r) =>
-          r.id_resep === selectedResep.id_resep
-            ? {
-                ...r,
-                id_rekam_medis: Number(form.id_rekam_medis.value),
-                tanggal_resep: form.tanggal_resep.value,
-                status_resep: form.status_resep.value,
-              }
-            : r
-        )
-      );
-    } else if (modalType === 'delete') {
-      setResepList(resepList.filter((r) => r.id_resep !== selectedResep.id_resep));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/resep-obat/${selectedResep.id_resep}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          id_rekam_medis: Number(form.id_rekam_medis.value),
+          tanggal_resep: form.tanggal_resep.value,
+          status_resep: form.status_resep.value,
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/resep-obat/${selectedResep.id_resep}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedResep(null);
   };
 
   return (
@@ -217,8 +201,8 @@ function ResepObat() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'

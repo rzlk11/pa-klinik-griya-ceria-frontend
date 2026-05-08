@@ -1,36 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Example data based on PelayananKesehatanModel.js
-const initialPelayananList = [
-  {
-    id_pelayanan: 1,
-    nama_pelayanan: 'Konsultasi Umum',
-    deskripsi: 'Pemeriksaan dan konsultasi kesehatan umum.',
-    harga: 50000,
-  },
-  {
-    id_pelayanan: 2,
-    nama_pelayanan: 'Pemeriksaan Gigi',
-    deskripsi: 'Pemeriksaan dan perawatan gigi dasar.',
-    harga: 75000,
-  },
-  {
-    id_pelayanan: 3,
-    nama_pelayanan: 'Imunisasi',
-    deskripsi: 'Pemberian imunisasi untuk anak-anak.',
-    harga: 100000,
-  },
-];
 
 const getStats = (pelayananList) => [
   { label: 'Total Pelayanan', value: pelayananList.length, icon: <i className="fa-solid fa-hospital text-blue-600"></i> },
 ];
 
 function PelayananKesehatan() {
-  const [pelayananList, setPelayananList] = useState(initialPelayananList);
+  const [pelayananList, setPelayananList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedPelayanan, setSelectedPelayanan] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/pelayanan`, { withCredentials: true });
+      setPelayananList(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const stats = getStats(pelayananList);
 
@@ -57,36 +50,30 @@ function PelayananKesehatan() {
     setSelectedPelayanan(null);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newPelayanan = {
-        id_pelayanan: pelayananList.length > 0 ? Math.max(...pelayananList.map(p => p.id_pelayanan)) + 1 : 1,
-        nama_pelayanan: form.nama_pelayanan.value,
-        deskripsi: form.deskripsi.value,
-        harga: Number(form.harga.value),
-      };
-      setPelayananList([...pelayananList, newPelayanan]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setPelayananList(
-        pelayananList.map((p) =>
-          p.id_pelayanan === selectedPelayanan.id_pelayanan
-            ? {
-                ...p,
-                nama_pelayanan: form.nama_pelayanan.value,
-                deskripsi: form.deskripsi.value,
-                harga: Number(form.harga.value),
-              }
-            : p
-        )
-      );
-    } else if (modalType === 'delete') {
-      setPelayananList(pelayananList.filter((p) => p.id_pelayanan !== selectedPelayanan.id_pelayanan));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/pelayanan/${selectedPelayanan.id_pelayanan}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          nama_pelayanan: form.nama_pelayanan.value,
+          deskripsi: form.deskripsi.value,
+          harga: Number(form.harga.value),
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/pelayanan`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/pelayanan/${selectedPelayanan.id_pelayanan}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedPelayanan(null);
   };
 
   return (
@@ -183,8 +170,8 @@ function PelayananKesehatan() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'

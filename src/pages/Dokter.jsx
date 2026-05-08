@@ -1,13 +1,5 @@
-import React, { useState } from 'react';
-
-// Example data, replace with API data as needed
-const initialDokterList = [
-  { id: 1, nama: 'Dr. Andi', spesialisasi: 'Umum', jadwal: 'Senin, Rabu', nomor_telepon: '081234567890' },
-  { id: 2, nama: 'Dr. Budi', spesialisasi: 'Anak', jadwal: 'Selasa, Kamis', nomor_telepon: '081234567891' },
-  { id: 3, nama: 'Dr. Citra', spesialisasi: 'Umum', jadwal: 'Senin, Jumat', nomor_telepon: '081234567892' },
-  { id: 4, nama: 'Dr. Dewi', spesialisasi: 'Gigi', jadwal: 'Rabu, Jumat', nomor_telepon: '081234567893' },
-];
-
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 function getStats(dokterList) {
   const totalDokter = dokterList.length;
   const spesialisasiCount = dokterList.reduce((acc, d) => {
@@ -25,10 +17,23 @@ function getStats(dokterList) {
 }
 
 function Dokter() {
-  const [dokterList, setDokterList] = useState(initialDokterList);
+  const [dokterList, setDokterList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedDokter, setSelectedDokter] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/dokter`, { withCredentials: true });
+      setDokterList(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const stats = getStats(dokterList);
 
@@ -55,38 +60,31 @@ function Dokter() {
     setSelectedDokter(null);
   };
 
-  const handleModalSubmit = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault();
-    if (modalType === 'add') {
-      const form = e.target;
-      const newDokter = {
-        id: dokterList.length > 0 ? Math.max(...dokterList.map(d => d.id)) + 1 : 1,
-        nama: form.nama.value,
-        spesialisasi: form.spesialisasi.value,
-        jadwal: form.jadwal.value,
-        nomor_telepon: form.nomor_telepon.value,
-      };
-      setDokterList([...dokterList, newDokter]);
-    } else if (modalType === 'edit') {
-      const form = e.target;
-      setDokterList(
-        dokterList.map((d) =>
-          d.id === selectedDokter.id
-            ? {
-                ...d,
-                nama: form.nama.value,
-                spesialisasi: form.spesialisasi.value,
-                jadwal: form.jadwal.value,
-                nomor_telepon: form.nomor_telepon.value,
-              }
-            : d
-        )
-      );
-    } else if (modalType === 'delete') {
-      setDokterList(dokterList.filter((d) => d.id !== selectedDokter.id));
+    try {
+      if (modalType === 'delete') {
+        await axios.delete(`${import.meta.env.VITE_API_URL}/dokter/${selectedDokter.id_dokter}`, { withCredentials: true });
+      } else {
+        const form = e.target;
+        const data = {
+          nama_dokter: form.nama_dokter.value,
+          spesialisasi: form.spesialisasi.value,
+          jadwal_praktek: form.jadwal_praktek.value,
+          nomor_telepon: form.nomor_telepon.value,
+        };
+
+        if (modalType === 'add') {
+          await axios.post(`${import.meta.env.VITE_API_URL}/dokter`, data, { withCredentials: true });
+        } else if (modalType === 'edit') {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/dokter/${selectedDokter.id_dokter}`, data, { withCredentials: true });
+        }
+      }
+      fetchData();
+      handleModalClose();
+    } catch (error) {
+      console.error(error);
     }
-    setShowModal(false);
-    setSelectedDokter(null);
   };
 
   return (
@@ -150,11 +148,11 @@ function Dokter() {
               </tr>
             ) : (
               dokterList.map((dokter) => (
-                <tr key={dokter.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">{dokter.id}</td>
-                  <td className="px-4 py-2">{dokter.nama}</td>
+                <tr key={dokter.id_dokter} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-2">{dokter.id_dokter}</td>
+                  <td className="px-4 py-2">{dokter.nama_dokter}</td>
                   <td className="px-4 py-2">{dokter.spesialisasi}</td>
-                  <td className="px-4 py-2">{dokter.jadwal}</td>
+                  <td className="px-4 py-2">{dokter.jadwal_praktek}</td>
                   <td className="px-4 py-2">{dokter.nomor_telepon}</td>
                   <td className="px-4 py-2">
                     <button
@@ -179,8 +177,8 @@ function Dokter() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'
@@ -194,7 +192,7 @@ function Dokter() {
             {modalType === 'delete' ? (
               <form onSubmit={handleModalSubmit}>
                 <p className="mb-6">
-                  Apakah Anda yakin ingin menghapus dokter <b>{selectedDokter?.nama}</b>?
+                  Apakah Anda yakin ingin menghapus dokter <b>{selectedDokter?.nama_dokter}</b>?
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
@@ -217,8 +215,8 @@ function Dokter() {
                 <div>
                   <label className="block mb-1">Nama Dokter</label>
                   <input
-                    name="nama"
-                    defaultValue={selectedDokter?.nama || ''}
+                    name="nama_dokter"
+                    defaultValue={selectedDokter?.nama_dokter || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
@@ -235,8 +233,8 @@ function Dokter() {
                 <div>
                   <label className="block mb-1">Jadwal Praktek</label>
                   <input
-                    name="jadwal"
-                    defaultValue={selectedDokter?.jadwal || ''}
+                    name="jadwal_praktek"
+                    defaultValue={selectedDokter?.jadwal_praktek || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
