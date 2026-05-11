@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
 
@@ -27,6 +28,7 @@ const calculateAge = (dob) => {
 };
 
 function Pasien() {
+  const navigate = useNavigate();
   const [pasienList, setPasienList] = useState([]);
   const [orangTuaList, setOrangTuaList] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -78,11 +80,12 @@ function Pasien() {
     { name: 'Orang Tua', selector: row => row.orang_tua?.name || '-', sortable: true },
     { name: 'Aksi', cell: (row) => (
         <div className="flex gap-2">
+          <button className="text-green-600 hover:underline font-semibold" onClick={() => navigate(`/pasien/${row.uuid}`)}>Detail</button>
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
         </div>
       ), ignoreRowClick: true },
-  ], []);
+  ], [navigate]);
 
   const filteredData = useMemo(() => {
     if (!searchText) return pasienList;
