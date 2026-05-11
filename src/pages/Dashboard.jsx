@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -50,6 +50,10 @@ function Dashboard() {
   const [todayTransaksi, setTodayTransaksi] = useState(0);
   const [obatStok, setObatStok] = useState([]);
   const [chartData, setChartData] = useState(Array(12).fill(0));
+  
+  const [searchObat, setSearchObat] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -136,6 +140,17 @@ function Dashboard() {
     ],
   };
 
+  const filteredAndSortedObat = useMemo(() => {
+    let result = obatStok;
+    if (searchObat) {
+      result = result.filter(o => o.name.toLowerCase().includes(searchObat.toLowerCase()));
+    }
+    return [...result].sort((a, b) => a.value - b.value);
+  }, [obatStok, searchObat]);
+
+  const totalPages = Math.ceil(filteredAndSortedObat.length / itemsPerPage) || 1;
+  const displayedObat = filteredAndSortedObat.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -184,21 +199,51 @@ function Dashboard() {
             <Bar data={dynamicBarData} options={barOptions} />
           </div>
         </div>
-        <div className="bg-white rounded border border-gray-200 w-full lg:w-[350px]">
-          <div className="text-gray-300 text-sm font-semibold flex items-center p-4 border-b border-gray-100">
+        <div className="bg-white rounded border border-gray-200 w-full lg:w-[350px] flex flex-col h-[400px]">
+          <div className="text-gray-300 text-sm font-semibold flex items-center p-4 border-b border-gray-100 shrink-0">
              <i className="fa-solid fa-tags mr-2"></i> Stok Obat
           </div>
-          <ul className="flex flex-col">
-            {obatStok.map((obat, idx) => (
-              <li key={idx} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0">
-                <div className="flex items-center font-medium text-gray-700 text-sm">
-                  <span className={`w-3 h-3 rounded-full mr-4 ${obat.color}`}></span>
-                  <span>{obat.name}</span>
-                </div>
-                <span className="font-bold text-green-800">{obat.value}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="p-3 border-b border-gray-100 shrink-0">
+            <input 
+              type="text" 
+              placeholder="Cari obat..." 
+              value={searchObat} 
+              onChange={(e) => { setSearchObat(e.target.value); setCurrentPage(1); }}
+              className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-700" 
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <ul className="flex flex-col">
+              {displayedObat.length > 0 ? displayedObat.map((obat, idx) => (
+                <li key={idx} className="flex items-center justify-between p-4 border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                  <div className="flex items-center font-medium text-gray-700 text-sm">
+                    <span className={`w-3 h-3 rounded-full mr-4 ${obat.color}`}></span>
+                    <span>{obat.name}</span>
+                  </div>
+                  <span className="font-bold text-green-800">{obat.value}</span>
+                </li>
+              )) : (
+                <li className="p-4 text-center text-sm text-gray-400">Tidak ada obat ditemukan.</li>
+              )}
+            </ul>
+          </div>
+          <div className="p-3 border-t border-gray-100 flex justify-between items-center shrink-0 text-sm">
+             <button 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(c => c - 1)}
+                className={`px-3 py-1 rounded ${currentPage === 1 ? 'text-gray-300' : 'text-green-700 hover:bg-green-50 font-medium'}`}
+             >
+               Prev
+             </button>
+             <span className="text-gray-500">Hal {currentPage} / {totalPages}</span>
+             <button 
+                disabled={currentPage === totalPages} 
+                onClick={() => setCurrentPage(c => c + 1)}
+                className={`px-3 py-1 rounded ${currentPage === totalPages ? 'text-gray-300' : 'text-green-700 hover:bg-green-50 font-medium'}`}
+             >
+               Next
+             </button>
+          </div>
         </div>
       </div>
     </div>
