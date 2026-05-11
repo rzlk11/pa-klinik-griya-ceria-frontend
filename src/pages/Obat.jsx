@@ -1,5 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import DataTable from 'react-data-table-component';
+
+const customStyles = {
+  headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
+  headCells: { style: { color: '#166534', fontWeight: '700', fontSize: '14px' } },
+  rows: { style: { fontSize: '14px', '&:hover': { backgroundColor: '#f0fdf4' } } },
+  pagination: { style: { borderTop: '1px solid #e5e7eb', fontSize: '13px' } },
+};
+
+const paginationComponentOptions = {
+  rowsPerPageText: 'Baris per halaman:',
+  rangeSeparatorText: 'dari',
+  noRowsPerPage: false,
+  selectAllRowsItem: true,
+  selectAllRowsItemText: 'Semua',
+};
 
 const stats = [
   { label: 'Total Obat', value: 6, icon: <i className="fa-solid fa-capsules"></i> },
@@ -13,6 +29,7 @@ function Obat() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedObat, setSelectedObat] = useState(null);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -78,6 +95,40 @@ function Obat() {
     }
   };
 
+  const columns = useMemo(() => [
+    { name: 'ID', selector: row => row.id_obat, sortable: true, width: '80px' },
+    { name: 'Nama Obat', selector: row => row.nama_obat, sortable: true },
+    { name: 'Jenis', selector: row => row.jenis, sortable: true },
+    { name: 'Stok', selector: row => row.stok, sortable: true, width: '100px' },
+    {
+      name: 'Harga/Unit',
+      selector: row => row.harga_per_unit,
+      sortable: true,
+      cell: row => `Rp ${Number(row.harga_per_unit).toLocaleString('id-ID')}`,
+    },
+    { name: 'Satuan', selector: row => row.satuan, sortable: true, width: '100px' },
+    {
+      name: 'Aksi',
+      cell: (row) => (
+        <div className="flex gap-2">
+          <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
+          <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
+        </div>
+      ),
+      ignoreRowClick: true,
+    },
+  ], []);
+
+  const filteredData = useMemo(() => {
+    if (!searchText) return obatList;
+    const lower = searchText.toLowerCase();
+    return obatList.filter(o =>
+      (o.nama_obat && o.nama_obat.toLowerCase().includes(lower)) ||
+      (o.jenis && o.jenis.toLowerCase().includes(lower)) ||
+      (o.satuan && o.satuan.toLowerCase().includes(lower))
+    );
+  }, [obatList, searchText]);
+
   return (
     <div>
       {/* Header */}
@@ -106,6 +157,8 @@ function Obat() {
           <input
             type="text"
             placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700"
           />
           <button
@@ -118,60 +171,19 @@ function Obat() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <table className="min-w-full table-auto">
-          <thead>
-            <tr className="border-b">
-              <th className="px-4 py-2 text-left text-green-800">ID</th>
-              <th className="px-4 py-2 text-left text-green-800">Nama Obat</th>
-              <th className="px-4 py-2 text-left text-green-800">Jenis</th>
-              <th className="px-4 py-2 text-left text-green-800">Stok</th>
-              <th className="px-4 py-2 text-left text-green-800">Harga/Unit</th>
-              <th className="px-4 py-2 text-left text-green-800">Satuan</th>
-              <th className="px-4 py-2 text-left text-green-800">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {obatList.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center text-gray-400 py-8">
-                  Belum ada data obat.
-                </td>
-              </tr>
-            ) : (
-              obatList.map((obat) => (
-                <tr key={obat.id_obat} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">{obat.id_obat}</td>
-                  <td className="px-4 py-2">{obat.nama_obat}</td>
-                  <td className="px-4 py-2">{obat.jenis}</td>
-                  <td className="px-4 py-2">{obat.stok}</td>
-                  <td className="px-4 py-2">
-                    Rp {Number(obat.harga_per_unit).toLocaleString('id-ID')}
-                  </td>
-                  <td className="px-4 py-2">{obat.satuan}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      className="text-blue-600 hover:underline mr-2"
-                      onClick={() => handleEdit(obat)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-red-600 hover:underline"
-                      onClick={() => handleDelete(obat)}
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        {/* Empty state */}
-        {obatList.length === 0 && (
-          <div className="text-center text-gray-400 py-8">Belum ada data obat.</div>
-        )}
+      <div className="bg-white rounded-lg shadow">
+        <DataTable
+          columns={columns}
+          data={filteredData}
+          pagination
+          paginationComponentOptions={paginationComponentOptions}
+          paginationPerPage={10}
+          paginationRowsPerPageOptions={[5, 10, 20, 50]}
+          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data obat.</div>}
+          customStyles={customStyles}
+          highlightOnHover
+          striped
+        />
       </div>
 
       {/* Modal */}

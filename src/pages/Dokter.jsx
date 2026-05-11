@@ -1,5 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import DataTable from 'react-data-table-component';
+
+const customStyles = {
+  headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
+  headCells: { style: { color: '#166534', fontWeight: '700', fontSize: '14px' } },
+  rows: { style: { fontSize: '14px', '&:hover': { backgroundColor: '#f0fdf4' } } },
+  pagination: { style: { borderTop: '1px solid #e5e7eb', fontSize: '13px' } },
+};
+
+const paginationComponentOptions = {
+  rowsPerPageText: 'Baris per halaman:',
+  rangeSeparatorText: 'dari',
+  noRowsPerPage: false,
+  selectAllRowsItem: true,
+  selectAllRowsItemText: 'Semua',
+};
+
 function getStats(dokterList) {
   const totalDokter = dokterList.length;
   const spesialisasiCount = dokterList.reduce((acc, d) => {
@@ -21,6 +38,7 @@ function Dokter() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedDokter, setSelectedDokter] = useState(null);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -87,6 +105,35 @@ function Dokter() {
     }
   };
 
+  const columns = useMemo(() => [
+    { name: 'ID', selector: row => row.id_dokter, sortable: true, width: '80px' },
+    { name: 'Nama Dokter', selector: row => row.nama_dokter, sortable: true },
+    { name: 'Spesialis', selector: row => row.spesialisasi, sortable: true },
+    { name: 'Jadwal Praktek', selector: row => row.jadwal_praktek, sortable: true },
+    { name: 'No Telp', selector: row => row.nomor_telepon, sortable: true },
+    {
+      name: 'Aksi',
+      cell: (row) => (
+        <div className="flex gap-2">
+          <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
+          <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
+        </div>
+      ),
+      ignoreRowClick: true,
+    },
+  ], []);
+
+  const filteredData = useMemo(() => {
+    if (!searchText) return dokterList;
+    const lower = searchText.toLowerCase();
+    return dokterList.filter(d =>
+      (d.nama_dokter && d.nama_dokter.toLowerCase().includes(lower)) ||
+      (d.spesialisasi && d.spesialisasi.toLowerCase().includes(lower)) ||
+      (d.jadwal_praktek && d.jadwal_praktek.toLowerCase().includes(lower)) ||
+      (d.nomor_telepon && d.nomor_telepon.toLowerCase().includes(lower))
+    );
+  }, [dokterList, searchText]);
+
   return (
     <div>
       {/* Header */}
@@ -115,6 +162,8 @@ function Dokter() {
           <input
             type="text"
             placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700"
           />
           <button
@@ -127,52 +176,19 @@ function Dokter() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <table className="min-w-full table-auto">
-          <thead>
-            <tr className="border-b">
-              <th className="px-4 py-2 text-left text-green-800">ID</th>
-              <th className="px-4 py-2 text-left text-green-800">Nama Dokter</th>
-              <th className="px-4 py-2 text-left text-green-800">Spesialis</th>
-              <th className="px-4 py-2 text-left text-green-800">Jadwal Praktek</th>
-              <th className="px-4 py-2 text-left text-green-800">No Telp</th>
-              <th className="px-4 py-2 text-left text-green-800">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dokterList.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center text-gray-400 py-8">
-                  Belum ada data dokter.
-                </td>
-              </tr>
-            ) : (
-              dokterList.map((dokter) => (
-                <tr key={dokter.id_dokter} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">{dokter.id_dokter}</td>
-                  <td className="px-4 py-2">{dokter.nama_dokter}</td>
-                  <td className="px-4 py-2">{dokter.spesialisasi}</td>
-                  <td className="px-4 py-2">{dokter.jadwal_praktek}</td>
-                  <td className="px-4 py-2">{dokter.nomor_telepon}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      className="text-blue-600 hover:underline mr-2"
-                      onClick={() => handleEdit(dokter)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-red-600 hover:underline"
-                      onClick={() => handleDelete(dokter)}
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="bg-white rounded-lg shadow">
+        <DataTable
+          columns={columns}
+          data={filteredData}
+          pagination
+          paginationComponentOptions={paginationComponentOptions}
+          paginationPerPage={10}
+          paginationRowsPerPageOptions={[5, 10, 20, 50]}
+          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data dokter.</div>}
+          customStyles={customStyles}
+          highlightOnHover
+          striped
+        />
       </div>
 
       {/* Modal */}
@@ -184,8 +200,8 @@ function Dokter() {
                 {modalType === 'add'
                   ? 'Tambah Dokter'
                   : modalType === 'edit'
-                  ? 'Edit Dokter'
-                  : 'Hapus Dokter'}
+                    ? 'Edit Dokter'
+                    : 'Hapus Dokter'}
               </h3>
               <button onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>

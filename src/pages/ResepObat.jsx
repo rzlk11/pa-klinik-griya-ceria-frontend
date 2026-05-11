@@ -1,5 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import DataTable from 'react-data-table-component';
+
+const customStyles = {
+  headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
+  headCells: { style: { color: '#166534', fontWeight: '700', fontSize: '14px' } },
+  rows: { style: { fontSize: '14px', '&:hover': { backgroundColor: '#f0fdf4' } } },
+  pagination: { style: { borderTop: '1px solid #e5e7eb', fontSize: '13px' } },
+};
+const paginationComponentOptions = {
+  rowsPerPageText: 'Baris per halaman:', rangeSeparatorText: 'dari',
+  noRowsPerPage: false, selectAllRowsItem: true, selectAllRowsItemText: 'Semua',
+};
 
 const getStats = (list) => [
   { label: 'Total Resep', value: list.length, icon: <i className="fa-solid fa-prescription text-blue-600"></i> },
@@ -11,51 +23,25 @@ const getStats = (list) => [
 function ResepObat() {
   const [resepList, setResepList] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
+  const [modalType, setModalType] = useState('add');
   const [selectedResep, setSelectedResep] = useState(null);
+  const [searchText, setSearchText] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true });
-      // Ensure details array exists for UI mapping
-      const dataWithDetails = response.data.map(item => ({
-        ...item,
-        details: item.details || []
-      }));
+      const dataWithDetails = response.data.map(item => ({ ...item, details: item.details || [] }));
       setResepList(dataWithDetails);
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   const stats = getStats(resepList);
-
-  const handleAdd = () => {
-    setModalType('add');
-    setSelectedResep(null);
-    setShowModal(true);
-  };
-
-  const handleEdit = (resep) => {
-    setModalType('edit');
-    setSelectedResep(resep);
-    setShowModal(true);
-  };
-
-  const handleDelete = (resep) => {
-    setModalType('delete');
-    setSelectedResep(resep);
-    setShowModal(true);
-  };
-
-  const handleModalClose = () => {
-    setShowModal(false);
-    setSelectedResep(null);
-  };
+  const handleAdd = () => { setModalType('add'); setSelectedResep(null); setShowModal(true); };
+  const handleEdit = (r) => { setModalType('edit'); setSelectedResep(r); setShowModal(true); };
+  const handleDelete = (r) => { setModalType('delete'); setSelectedResep(r); setShowModal(true); };
+  const handleModalClose = () => { setShowModal(false); setSelectedResep(null); };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
@@ -64,206 +50,110 @@ function ResepObat() {
         await axios.delete(`${import.meta.env.VITE_API_URL}/resep-obat/${selectedResep.id_resep}`, { withCredentials: true });
       } else {
         const form = e.target;
-        const data = {
-          id_rekam_medis: Number(form.id_rekam_medis.value),
-          tanggal_resep: form.tanggal_resep.value,
-          status_resep: form.status_resep.value,
-        };
-
+        const data = { id_rekam_medis: Number(form.id_rekam_medis.value), tanggal_resep: form.tanggal_resep.value, status_resep: form.status_resep.value };
         if (modalType === 'add') {
           await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, data, { withCredentials: true });
         } else if (modalType === 'edit') {
           await axios.patch(`${import.meta.env.VITE_API_URL}/resep-obat/${selectedResep.id_resep}`, data, { withCredentials: true });
         }
       }
-      fetchData();
-      handleModalClose();
-    } catch (error) {
-      console.error(error);
-    }
+      fetchData(); handleModalClose();
+    } catch (error) { console.error(error); }
   };
+
+  const columns = useMemo(() => [
+    { name: 'ID Resep', selector: row => row.id_resep, sortable: true, width: '90px' },
+    { name: 'ID Rekam Medis', selector: row => row.id_rekam_medis, sortable: true, width: '140px' },
+    { name: 'Tanggal', selector: row => row.tanggal_resep, sortable: true },
+    { name: 'Status', selector: row => row.status_resep, sortable: true, cell: row => (
+        <span className={row.status_resep === 'Aktif' ? 'text-green-700 font-semibold' : row.status_resep === 'Selesai' ? 'text-blue-700 font-semibold' : 'text-red-700 font-semibold'}>
+          {row.status_resep}
+        </span>
+      ) },
+    { name: 'Detail Obat', cell: row => row.details.length === 0 ? <span className="text-gray-400">-</span> : (
+        <ul className="list-disc ml-4">
+          {row.details.map((detail) => (<li key={detail.id}>{detail.nama_obat} ({detail.dosis}) - {detail.jumlah} {detail.satuan}</li>))}
+        </ul>
+      ), wrap: true },
+    { name: 'Aksi', cell: (row) => (
+        <div className="flex gap-2">
+          <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
+          <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
+        </div>
+      ), ignoreRowClick: true },
+  ], []);
+
+  const filteredData = useMemo(() => {
+    if (!searchText) return resepList;
+    const lower = searchText.toLowerCase();
+    return resepList.filter(r =>
+      (r.status_resep && r.status_resep.toLowerCase().includes(lower)) ||
+      (r.tanggal_resep && r.tanggal_resep.toLowerCase().includes(lower)) ||
+      String(r.id_resep).includes(lower) ||
+      String(r.id_rekam_medis).includes(lower)
+    );
+  }, [resepList, searchText]);
 
   return (
     <div>
-      {/* Header */}
       <h1 className="text-3xl font-bold text-green-800 mb-8">Resep Obat</h1>
-
-      {/* Stats */}
       <div className="flex flex-col lg:flex-row gap-6 mb-8">
         {stats.map((stat, idx) => (
-          <div
-            key={idx}
-            className="bg-white rounded-lg w-full shadow p-5 flex flex-col items-start"
-          >
+          <div key={idx} className="bg-white rounded-lg w-full shadow p-5 flex flex-col items-start">
             <div className="text-gray-400 flex items-center mb-2">
-              <span className="mr-2">{stat.icon}</span>
-              <span>{stat.label}</span>
+              <span className="mr-2">{stat.icon}</span><span>{stat.label}</span>
             </div>
             <div className="text-2xl font-bold text-green-800">{stat.value}</div>
           </div>
         ))}
       </div>
-
-      {/* Table Title and Actions */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-green-800">Tabel Data Resep Obat</h2>
         <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Search"
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700"
-          />
-          <button
-            className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900"
-            onClick={handleAdd}
-          >
+          <input type="text" placeholder="Search" value={searchText} onChange={(e) => setSearchText(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700" />
+          <button className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900" onClick={handleAdd}>
             Tambah Resep
           </button>
         </div>
       </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <table className="min-w-full table-auto">
-          <thead>
-            <tr className="border-b">
-              <th className="px-4 py-2 text-left text-green-800">ID Resep</th>
-              <th className="px-4 py-2 text-left text-green-800">ID Rekam Medis</th>
-              <th className="px-4 py-2 text-left text-green-800">Tanggal</th>
-              <th className="px-4 py-2 text-left text-green-800">Status</th>
-              <th className="px-4 py-2 text-left text-green-800">Detail Obat</th>
-              <th className="px-4 py-2 text-left text-green-800">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {resepList.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center text-gray-400 py-8">
-                  Belum ada data resep.
-                </td>
-              </tr>
-            ) : (
-              resepList.map((resep) => (
-                <tr key={resep.id_resep} className="border-b hover:bg-gray-50 align-top">
-                  <td className="px-4 py-2">{resep.id_resep}</td>
-                  <td className="px-4 py-2">{resep.id_rekam_medis}</td>
-                  <td className="px-4 py-2">{resep.tanggal_resep}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={
-                        resep.status_resep === 'Aktif'
-                          ? 'text-green-700 font-semibold'
-                          : resep.status_resep === 'Selesai'
-                          ? 'text-blue-700 font-semibold'
-                          : 'text-red-700 font-semibold'
-                      }
-                    >
-                      {resep.status_resep}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {resep.details.length === 0 ? (
-                      <span className="text-gray-400">-</span>
-                    ) : (
-                      <ul className="list-disc ml-4">
-                        {resep.details.map((detail) => (
-                          <li key={detail.id}>
-                            {detail.nama_obat} ({detail.dosis}) - {detail.jumlah} {detail.satuan}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    <button
-                      className="text-blue-600 hover:underline mr-2"
-                      onClick={() => handleEdit(resep)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-red-600 hover:underline"
-                      onClick={() => handleDelete(resep)}
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        {/* Empty state */}
-        {resepList.length === 0 && (
-          <div className="text-center text-gray-400 py-8">Belum ada data resep.</div>
-        )}
+      <div className="bg-white rounded-lg shadow">
+        <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
+          paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
+          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data resep.</div>}
+          customStyles={customStyles} highlightOnHover striped />
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
-                {modalType === 'add'
-                  ? 'Tambah Resep'
-                  : modalType === 'edit'
-                  ? 'Edit Resep'
-                  : 'Hapus Resep'}
+                {modalType === 'add' ? 'Tambah Resep' : modalType === 'edit' ? 'Edit Resep' : 'Hapus Resep'}
               </h3>
               <button onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             {modalType === 'delete' ? (
               <form onSubmit={handleModalSubmit}>
-                <p className="mb-6">
-                  Apakah Anda yakin ingin menghapus resep <b>{selectedResep?.id_resep}</b>?
-                </p>
+                <p className="mb-6">Apakah Anda yakin ingin menghapus resep <b>{selectedResep?.id_resep}</b>?</p>
                 <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={handleModalClose}
-                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                  >
-                    Hapus
-                  </button>
+                  <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
+                  <button type="submit" className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Hapus</button>
                 </div>
               </form>
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
                   <label className="block mb-1">ID Rekam Medis</label>
-                  <input
-                    name="id_rekam_medis"
-                    type="number"
-                    defaultValue={selectedResep?.id_rekam_medis || ''}
-                    required
-                    className="w-full border px-3 py-2 rounded"
-                  />
+                  <input name="id_rekam_medis" type="number" defaultValue={selectedResep?.id_rekam_medis || ''} required className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div>
                   <label className="block mb-1">Tanggal Resep</label>
-                  <input
-                    name="tanggal_resep"
-                    type="date"
-                    defaultValue={selectedResep?.tanggal_resep || ''}
-                    required
-                    className="w-full border px-3 py-2 rounded"
-                  />
+                  <input name="tanggal_resep" type="date" defaultValue={selectedResep?.tanggal_resep || ''} required className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div>
                   <label className="block mb-1">Status Resep</label>
-                  <select
-                    name="status_resep"
-                    defaultValue={selectedResep?.status_resep || ''}
-                    required
-                    className="w-full border px-3 py-2 rounded"
-                  >
+                  <select name="status_resep" defaultValue={selectedResep?.status_resep || ''} required className="w-full border px-3 py-2 rounded">
                     <option value="">Pilih</option>
                     <option value="Aktif">Aktif</option>
                     <option value="Selesai">Selesai</option>
@@ -271,17 +161,8 @@ function ResepObat() {
                   </select>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={handleModalClose}
-                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800"
-                  >
+                  <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
+                  <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
                     {modalType === 'add' ? 'Tambah' : 'Simpan'}
                   </button>
                 </div>
