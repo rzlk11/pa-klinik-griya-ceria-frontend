@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
 
@@ -21,7 +22,9 @@ const getStats = (list) => [
 ];
 
 function ResepObat() {
+  const navigate = useNavigate();
   const [resepList, setResepList] = useState([]);
+  const [rekamMedisList, setRekamMedisList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add');
   const [selectedResep, setSelectedResep] = useState(null);
@@ -34,6 +37,9 @@ function ResepObat() {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true });
       const dataWithDetails = response.data.map(item => ({ ...item, details: item.details || [] }));
       setResepList(dataWithDetails);
+
+      const rmResponse = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true });
+      setRekamMedisList(rmResponse.data);
     } catch (error) { console.error(error); }
   };
 
@@ -71,17 +77,18 @@ function ResepObat() {
         </span>
       ) },
     { name: 'Detail Obat', cell: row => row.details.length === 0 ? <span className="text-gray-400">-</span> : (
-        <ul className="list-disc ml-4">
-          {row.details.map((detail) => (<li key={detail.id}>{detail.nama_obat} ({detail.dosis}) - {detail.jumlah} {detail.satuan}</li>))}
+        <ul className="list-disc ml-4 my-2">
+          {row.details.map((detail) => (<li key={detail.id_detail_resep}>{detail.obat?.nama_obat || 'Obat tidak diketahui'} ({detail.dosis}) - {detail.jumlah_obat} {detail.obat?.satuan || ''}</li>))}
         </ul>
       ), wrap: true },
     { name: 'Aksi', cell: (row) => (
         <div className="flex gap-2">
+          <button className="text-green-600 hover:underline font-semibold" onClick={() => navigate(`/resep-obat/${row.id_resep}/detail`)}>Kelola Obat</button>
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
         </div>
       ), ignoreRowClick: true },
-  ], []);
+  ], [navigate]);
 
   const filteredData = useMemo(() => {
     if (!searchText) return resepList;
@@ -144,8 +151,15 @@ function ResepObat() {
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
-                  <label className="block mb-1">ID Rekam Medis</label>
-                  <input name="id_rekam_medis" type="number" defaultValue={selectedResep?.id_rekam_medis || ''} required className="w-full border px-3 py-2 rounded" />
+                  <label className="block mb-1">Rekam Medis</label>
+                  <select name="id_rekam_medis" defaultValue={selectedResep?.id_rekam_medis || ''} required className="w-full border px-3 py-2 rounded">
+                    <option value="">-- Pilih Rekam Medis --</option>
+                    {rekamMedisList.map(rm => (
+                      <option key={rm.id_rekam_medis} value={rm.id_rekam_medis}>
+                        ID: {rm.id_rekam_medis} - Pasien: {rm.pasien?.name || 'Tidak diketahui'} (Diagnosa: {rm.diagnosa || '-'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block mb-1">Tanggal Resep</label>
