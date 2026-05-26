@@ -24,10 +24,12 @@ function Transaksi() {
   const [pasienList, setPasienList] = useState([]);
   const [pelayananList, setPelayananList] = useState([]);
   const [resepList, setResepList] = useState([]);
+  const [rekamMedisList, setRekamMedisList] = useState([]);
   
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedTransaksi, setSelectedTransaksi] = useState(null);
+  const [selectedPasienId, setSelectedPasienId] = useState('');
 
   const [previewImage, setPreviewImage] = useState('');
   const [fileImage, setFileImage] = useState('');
@@ -45,15 +47,17 @@ function Transaksi() {
       setPelayananList(pelRes.data);
       const resRes = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true });
       setResepList(resRes.data);
+      const rmRes = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true });
+      setRekamMedisList(rmRes.data);
     } catch (error) { console.error(error); }
   };
 
   const stats = getStats(transaksiList);
 
-  const handleAdd = () => { setModalType('add'); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); setShowModal(true); };
-  const handleEdit = (trx) => { setModalType('edit'); setSelectedTransaksi(trx); setPreviewImage(trx.bukti_transaksi || ''); setFileImage(''); setShowModal(true); };
+  const handleAdd = () => { setModalType('add'); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); setSelectedPasienId(''); setShowModal(true); };
+  const handleEdit = (trx) => { setModalType('edit'); setSelectedTransaksi(trx); setPreviewImage(trx.bukti_transaksi || ''); setFileImage(''); setSelectedPasienId(trx.id_pasien || ''); setShowModal(true); };
   const handleDelete = (trx) => { setModalType('delete'); setSelectedTransaksi(trx); setShowModal(true); };
-  const handleModalClose = () => { setShowModal(false); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); };
+  const handleModalClose = () => { setShowModal(false); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); setSelectedPasienId(''); };
 
   const loadImage = (e) => {
     const image = e.target.files[0];
@@ -91,7 +95,17 @@ function Transaksi() {
     { name: 'ID', selector: row => row.id_transaksi, sortable: true, width: '70px' },
     { name: 'Pasien', selector: row => row.pasien?.name || '-', sortable: true },
     { name: 'Pelayanan', selector: row => row.pelayanan?.nama_pelayanan || '-', sortable: true },
-    { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '80px' },
+    { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '180px', wrap: true, cell: row => {
+        if (!row.id_resep) return '-';
+        const resepDetail = resepList.find(r => r.id_resep === row.id_resep);
+        const obatText = resepDetail?.details?.length > 0 ? resepDetail.details.map(d => d.obat?.nama_obat).join(', ') : 'Tanpa obat';
+        return (
+          <div className="py-1">
+            <div className="font-semibold text-green-700">ID: {row.id_resep}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{obatText}</div>
+          </div>
+        );
+    } },
     { name: 'Tanggal', selector: row => row.tanggal_transaksi, sortable: true },
     { name: 'Total Biaya', selector: row => row.total_biaya, sortable: true, cell: row => `Rp ${Number(row.total_biaya).toLocaleString('id-ID')}` },
     { name: 'Status', selector: row => row.status_pembayaran, sortable: true, cell: row => (
@@ -108,7 +122,7 @@ function Transaksi() {
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
         </div>
       ), ignoreRowClick: true },
-  ], []);
+  ], [resepList]);
 
   const filteredData = useMemo(() => {
     if (!searchText) return transaksiList;
@@ -172,7 +186,7 @@ function Transaksi() {
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
                   <label className="block mb-1">Pasien</label>
-                  <select name="id_pasien" defaultValue={selectedTransaksi?.id_pasien || ''} className="w-full border px-3 py-2 rounded">
+                  <select name="id_pasien" value={selectedPasienId} onChange={(e) => setSelectedPasienId(e.target.value)} className="w-full border px-3 py-2 rounded">
                     <option value="">-- Pilih Pasien --</option>
                     {pasienList.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
                   </select>
@@ -188,7 +202,25 @@ function Transaksi() {
                   <label className="block mb-1">Resep</label>
                   <select name="id_resep" defaultValue={selectedTransaksi?.id_resep || ''} className="w-full border px-3 py-2 rounded">
                     <option value="">-- Pilih Resep --</option>
-                    {resepList.map(r => (<option key={r.id_resep} value={r.id_resep}>{r.id_resep}</option>))}
+                    {!selectedPasienId ? (
+                      <option value="" disabled>Silakan pilih pasien terlebih dahulu</option>
+                    ) : (
+                      resepList
+                        .filter(r => {
+                          const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
+                          return rm && rm.id_pasien === Number(selectedPasienId);
+                        })
+                        .map(r => {
+                          const obatText = r.details?.length > 0 ? r.details.map(d => d.obat?.nama_obat).join(', ') : 'Tanpa obat';
+                          const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
+                          const namaPasien = rm?.pasien?.name || 'Pasien tidak diketahui';
+                          return (
+                            <option key={r.id_resep} value={r.id_resep}>
+                              ID: {r.id_resep} - {namaPasien} - {r.tanggal_resep} ({r.status_resep}) - Obat: {obatText}
+                            </option>
+                          );
+                        })
+                    )}
                   </select>
                 </div>
                 <div>
