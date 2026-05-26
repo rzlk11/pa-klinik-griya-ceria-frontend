@@ -22,9 +22,27 @@ const getStats = (list) => [
 
 const calculateAge = (dob) => {
   if (!dob) return '-';
-  const diffMs = Date.now() - new Date(dob).getTime();
-  const ageDt = new Date(diffMs);
-  return Math.abs(ageDt.getUTCFullYear() - 1970);
+  const birth = new Date(dob);
+  const today = new Date();
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  let days = today.getDate() - birth.getDate();
+
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  let result = '';
+  if (years > 0) result += `${years} Tahun `;
+  if (months > 0) result += `${months} Bulan `;
+  if (days >= 0) result += `${days} Hari`;
+  return result.trim();
 };
 
 function Pasien() {
@@ -74,10 +92,10 @@ function Pasien() {
 
   const columns = useMemo(() => [
     { name: 'Nama Pasien', selector: row => row.name, sortable: true },
-    { name: 'Usia', selector: row => calculateAge(row.date_of_birth), sortable: true, cell: row => `${calculateAge(row.date_of_birth)} Tahun`, width: '120px' },
+    { name: 'Usia', selector: row => row.date_of_birth, sortable: true, cell: row => calculateAge(row.date_of_birth), width: '180px' },
     { name: 'Tanggal Lahir', selector: row => row.date_of_birth, sortable: true },
     { name: 'Jenis Kelamin', selector: row => row.gender, sortable: true, cell: row => row.gender === 'L' ? 'Laki-laki' : row.gender === 'P' ? 'Perempuan' : '-' },
-    { name: 'Orang Tua', selector: row => row.orang_tua?.name || '-', sortable: true },
+    { name: 'Orang Tua', selector: row => row.orang_tua?.name + " ( " + row.orang_tua?.relation + " )" || '-', sortable: true },
     { name: 'Aksi', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-green-600 hover:underline font-semibold" onClick={() => navigate(`/pasien/${row.uuid}`)}>Detail</button>

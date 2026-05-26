@@ -45,9 +45,27 @@ function DetailPasien() {
 
   const calculateAge = (dob) => {
     if (!dob) return '-';
-    const diffMs = Date.now() - new Date(dob).getTime();
-    const ageDt = new Date(diffMs);
-    return Math.abs(ageDt.getUTCFullYear() - 1970);
+    const birth = new Date(dob);
+    const today = new Date();
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    let days = today.getDate() - birth.getDate();
+
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    let result = '';
+    if (years > 0) result += `${years} Tahun `;
+    if (months > 0) result += `${months} Bulan `;
+    if (days >= 0) result += `${days} Hari`;
+    return result.trim();
   };
 
   const rekamMedisColumns = [
@@ -96,7 +114,7 @@ function DetailPasien() {
           <h2 className="text-xl font-bold text-green-800 mb-4 border-b pb-2">Informasi Pasien</h2>
           <div className="space-y-3">
             <div className="flex justify-between"><span className="text-gray-500">Nama Lengkap</span><span className="font-medium">{pasien.name}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Usia</span><span className="font-medium">{calculateAge(pasien.date_of_birth)} Tahun</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Usia</span><span className="font-medium">{calculateAge(pasien.date_of_birth)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Tanggal Lahir</span><span className="font-medium">{pasien.date_of_birth}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Jenis Kelamin</span><span className="font-medium">{pasien.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</span></div>
           </div>
