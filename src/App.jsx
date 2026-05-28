@@ -13,7 +13,6 @@ import Transaksi from './pages/Transaksi';
 import ResepObat from './pages/ResepObat';
 import KelolaDetailResep from './pages/KelolaDetailResep';
 import RekamMedis from './pages/RekamMedis';
-import OrangTua from './pages/OrangTua';
 import PelayananKesehatan from './pages/PelayananKesehatan';
 import DetailPasien from './pages/DetailPasien';
 
@@ -34,7 +33,6 @@ function App() {
           <Route path='/resep-obat' element={<ResepObat />} />
           <Route path='/resep-obat/:id/detail' element={<KelolaDetailResep />} />
           <Route path='/rekam-medis' element={<RekamMedis />} />
-          <Route path='/orang-tua' element={<OrangTua />} />
           <Route path='/pelayanan-kesehatan' element={<PelayananKesehatan />} />
         </Route>
       </Routes>

@@ -12,7 +12,6 @@ function Sidebar() {
     { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
     { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
     { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
-    { to: '/orang-tua', icon: <i className="fa-solid fa-user-tie"></i>, label: 'Orang Tua Pasien' },
     { to: '/pelayanan-kesehatan', icon: <i className="fa-solid fa-hospital"></i>, label: 'Pelayanan Kesehatan' },
   ];
 

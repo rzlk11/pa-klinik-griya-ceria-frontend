@@ -72,6 +72,10 @@ function DetailPasien() {
     { name: 'Tgl Rekam Medis', selector: row => row.createdAt ? new Date(row.createdAt).toLocaleDateString('id-ID') : '-', sortable: true },
     { name: 'Diagnosa', selector: row => row.diagnosa || '-', wrap: true },
     { name: 'Tindakan', selector: row => row.tindakan || '-', wrap: true },
+    { name: 'Berat Badan', selector: row => row.berat_badan, width: '110px',
+      cell: row => row.berat_badan ? `${row.berat_badan} kg` : '-' },
+    { name: 'Suhu', selector: row => row.suhu, width: '100px',
+      cell: row => row.suhu ? `${row.suhu} °C` : '-' },
     { name: 'Catatan', selector: row => row.catatan || '-', wrap: true },
   ];
 
@@ -113,6 +117,7 @@ function DetailPasien() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold text-green-800 mb-4 border-b pb-2">Informasi Pasien</h2>
           <div className="space-y-3">
+            <div className="flex justify-between"><span className="text-gray-500">No. Register</span><span className="font-medium">{pasien.no_register || '-'}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Nama Lengkap</span><span className="font-medium">{pasien.name}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Usia</span><span className="font-medium">{calculateAge(pasien.date_of_birth)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Tanggal Lahir</span><span className="font-medium">{pasien.date_of_birth}</span></div>
@@ -123,11 +128,10 @@ function DetailPasien() {
         {/* Info Orang Tua */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold text-green-800 mb-4 border-b pb-2">Informasi Orang Tua</h2>
-          {pasien.orang_tua ? (
+          {pasien.nama_orang_tua || pasien.no_telp_orang_tua ? (
             <div className="space-y-3">
-              <div className="flex justify-between"><span className="text-gray-500">Nama</span><span className="font-medium">{pasien.orang_tua.name}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Hubungan</span><span className="font-medium capitalize">{pasien.orang_tua.relation}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">No. Telepon</span><span className="font-medium">{pasien.orang_tua.phone}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Nama</span><span className="font-medium">{pasien.nama_orang_tua || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">No. Telepon</span><span className="font-medium">{pasien.no_telp_orang_tua || '-'}</span></div>
             </div>
           ) : (
             <div className="text-gray-400 italic">Data orang tua tidak tersedia.</div>

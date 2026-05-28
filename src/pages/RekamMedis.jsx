@@ -58,6 +58,7 @@ function RekamMedis() {
         const data = {
           diagnosa: form.diagnosa.value, tindakan: form.tindakan.value, catatan: form.catatan.value,
           id_pasien: Number(form.id_pasien.value), id_dokter: Number(form.id_dokter.value), id_pelayanan: Number(form.id_pelayanan.value),
+          berat_badan: form.berat_badan.value || null, suhu: form.suhu.value || null,
         };
         if (modalType === 'add') {
           await axios.post(`${import.meta.env.VITE_API_URL}/rekam-medis`, data, { withCredentials: true });
@@ -79,6 +80,10 @@ function RekamMedis() {
     { name: 'Pelayanan', selector: row => row.pelayanan?.nama_pelayanan || '-', sortable: true },
     { name: 'Diagnosa', selector: row => row.diagnosa || '-', sortable: true, wrap: true },
     { name: 'Tindakan', selector: row => row.tindakan || '-', sortable: true, wrap: true },
+    { name: 'Berat Badan', selector: row => row.berat_badan, sortable: true, width: '110px',
+      cell: row => row.berat_badan ? `${row.berat_badan} kg` : '-' },
+    { name: 'Suhu', selector: row => row.suhu, sortable: true, width: '100px',
+      cell: row => row.suhu ? `${row.suhu} °C` : '-' },
     { name: 'Catatan', selector: row => row.catatan || '-', sortable: true, wrap: true },
     { name: 'Aksi', cell: (row) => (
         <div className="flex gap-2">
@@ -177,6 +182,22 @@ function RekamMedis() {
                 <div>
                   <label className="block mb-1">Tindakan</label>
                   <textarea name="tindakan" defaultValue={selectedRekamMedis?.tindakan || ''} required className="w-full border px-3 py-2 rounded" />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block mb-1">Berat Badan (kg)</label>
+                    <input name="berat_badan" type="number" step="0.1" min="0"
+                      defaultValue={selectedRekamMedis?.berat_badan || ''}
+                      placeholder="Contoh: 15.5"
+                      className="w-full border px-3 py-2 rounded" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block mb-1">Suhu (°C)</label>
+                    <input name="suhu" type="number" step="0.1" min="0"
+                      defaultValue={selectedRekamMedis?.suhu || ''}
+                      placeholder="Contoh: 36.5"
+                      className="w-full border px-3 py-2 rounded" />
+                  </div>
                 </div>
                 <div>
                   <label className="block mb-1">Catatan</label>
