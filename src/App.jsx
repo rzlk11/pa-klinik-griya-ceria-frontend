@@ -7,7 +7,7 @@ import AuthLayout from './components/AuthLayout';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import Pasien from './pages/Pasien';
-import Dokter from './pages/Dokter';
+import Terapis from './pages/Terapis';
 import Obat from './pages/Obat';
 import Transaksi from './pages/Transaksi';
 import ResepObat from './pages/ResepObat';
@@ -27,7 +27,7 @@ function App() {
           <Route path='/dashboard' element={<Dashboard />} />
           <Route path='/pasien' element={<Pasien />} />
           <Route path='/pasien/:id' element={<DetailPasien />} />
-          <Route path='/dokter' element={<Dokter />} />
+          <Route path='/terapis' element={<Terapis />} />
           <Route path='/obat' element={<Obat />} />
           <Route path='/transaksi' element={<Transaksi />} />
           <Route path='/resep-obat' element={<ResepObat />} />

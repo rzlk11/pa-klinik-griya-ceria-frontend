@@ -7,7 +7,7 @@ function Sidebar() {
   const menu = [
     { to: '/dashboard', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
     { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
-    { to: '/dokter', icon: <i className="fa-solid fa-stethoscope"></i>, label: 'Dokter' },
+    { to: '/terapis', icon: <i className="fa-solid fa-user-md"></i>, label: 'Terapis' },
     { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
     { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
     { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },

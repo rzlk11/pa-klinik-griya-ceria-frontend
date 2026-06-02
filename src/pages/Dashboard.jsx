@@ -45,7 +45,7 @@ function Dashboard() {
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
 
   const [pasienCount, setPasienCount] = useState(0);
-  const [dokterCount, setDokterCount] = useState(0);
+  const [terapisCount, setTerapisCount] = useState(0);
   const [obatCount, setObatCount] = useState(0);
   const [todayTransaksi, setTodayTransaksi] = useState(0);
   const [obatStok, setObatStok] = useState([]);
@@ -58,15 +58,15 @@ function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [pasienRes, dokterRes, obatRes, transaksiRes] = await Promise.all([
+        const [pasienRes, terapisRes, obatRes, transaksiRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true }),
-          axios.get(`${import.meta.env.VITE_API_URL}/dokter`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/terapis`, { withCredentials: true }),
           axios.get(`${import.meta.env.VITE_API_URL}/obat`, { withCredentials: true }),
           axios.get(`${import.meta.env.VITE_API_URL}/transaksi`, { withCredentials: true }),
         ]);
 
         setPasienCount(pasienRes.data.length);
-        setDokterCount(dokterRes.data.length);
+        setTerapisCount(terapisRes.data.length);
         setObatCount(obatRes.data.length);
 
         const colors = ['bg-red-500', 'bg-yellow-400', 'bg-green-500', 'bg-blue-500', 'bg-purple-500'];
@@ -122,7 +122,7 @@ function Dashboard() {
 
   const stats = [
     { label: 'Total Pasien', value: pasienCount, icon: <i className="fa-solid fa-user-group"></i> },
-    { label: 'Total Dokter', value: dokterCount, icon: <i className="fa-solid fa-stethoscope"></i> },
+    { label: 'Total Terapis', value: terapisCount, icon: <i className="fa-solid fa-user-md"></i> },
     { label: 'Total Jenis Obat', value: obatCount, icon: <i className="fa-solid fa-capsules"></i> },
     { label: 'Total Transaksi Hari ini', value: formatRupiah(todayTransaksi), icon: <i className="fa-solid fa-wallet"></i> },
   ];

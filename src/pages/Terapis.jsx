@@ -17,27 +17,27 @@ const paginationComponentOptions = {
   selectAllRowsItemText: 'Semua',
 };
 
-function getStats(dokterList) {
-  const totalDokter = dokterList.length;
-  const spesialisasiCount = dokterList.reduce((acc, d) => {
+function getStats(terapisList) {
+  const totalTerapis = terapisList.length;
+  const spesialisasiCount = terapisList.reduce((acc, d) => {
     acc[d.spesialisasi] = (acc[d.spesialisasi] || 0) + 1;
     return acc;
   }, {});
   return [
-    { label: 'Total Dokter', value: totalDokter, icon: <i className="fa-solid fa-stethoscope"></i> },
+    { label: 'Total Terapis', value: totalTerapis, icon: <i className="fa-solid fa-user-md"></i> },
     ...Object.entries(spesialisasiCount).map(([spesialisasi, count]) => ({
-      label: `Dokter Spesialis ${spesialisasi}`,
+      label: `Terapis Spesialis ${spesialisasi}`,
       value: count,
       icon: <i className="fa-solid fa-tags"></i>,
     })),
   ];
 }
 
-function Dokter() {
-  const [dokterList, setDokterList] = useState([]);
+function Terapis() {
+  const [terapisList, setTerapisList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
-  const [selectedDokter, setSelectedDokter] = useState(null);
+  const [selectedTerapis, setSelectedTerapis] = useState(null);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
@@ -46,56 +46,56 @@ function Dokter() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/dokter`, { withCredentials: true });
-      setDokterList(response.data);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/terapis`, { withCredentials: true });
+      setTerapisList(response.data);
     } catch (error) {
       console.error(error);
     }
   };
 
-  const stats = getStats(dokterList);
+  const stats = getStats(terapisList);
 
   const handleAdd = () => {
     setModalType('add');
-    setSelectedDokter(null);
+    setSelectedTerapis(null);
     setShowModal(true);
   };
 
-  const handleEdit = (dokter) => {
+  const handleEdit = (terapis) => {
     setModalType('edit');
-    setSelectedDokter(dokter);
+    setSelectedTerapis(terapis);
     setShowModal(true);
   };
 
-  const handleDelete = (dokter) => {
+  const handleDelete = (terapis) => {
     setModalType('delete');
-    setSelectedDokter(dokter);
+    setSelectedTerapis(terapis);
     setShowModal(true);
   };
 
   const handleModalClose = () => {
     setShowModal(false);
-    setSelectedDokter(null);
+    setSelectedTerapis(null);
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {
       if (modalType === 'delete') {
-        await axios.delete(`${import.meta.env.VITE_API_URL}/dokter/${selectedDokter.id_dokter}`, { withCredentials: true });
+        await axios.delete(`${import.meta.env.VITE_API_URL}/terapis/${selectedTerapis.id_terapis}`, { withCredentials: true });
       } else {
         const form = e.target;
         const data = {
-          nama_dokter: form.nama_dokter.value,
+          nama_terapis: form.nama_terapis.value,
           spesialisasi: form.spesialisasi.value,
           jadwal_praktek: form.jadwal_praktek.value,
           nomor_telepon: form.nomor_telepon.value,
         };
 
         if (modalType === 'add') {
-          await axios.post(`${import.meta.env.VITE_API_URL}/dokter`, data, { withCredentials: true });
+          await axios.post(`${import.meta.env.VITE_API_URL}/terapis`, data, { withCredentials: true });
         } else if (modalType === 'edit') {
-          await axios.patch(`${import.meta.env.VITE_API_URL}/dokter/${selectedDokter.id_dokter}`, data, { withCredentials: true });
+          await axios.patch(`${import.meta.env.VITE_API_URL}/terapis/${selectedTerapis.id_terapis}`, data, { withCredentials: true });
         }
       }
       fetchData();
@@ -106,8 +106,8 @@ function Dokter() {
   };
 
   const columns = useMemo(() => [
-    { name: 'ID', selector: row => row.id_dokter, sortable: true, width: '80px' },
-    { name: 'Nama Dokter', selector: row => row.nama_dokter, sortable: true },
+    { name: 'ID', selector: row => row.id_terapis, sortable: true, width: '80px' },
+    { name: 'Nama Terapis', selector: row => row.nama_terapis, sortable: true },
     { name: 'Spesialis', selector: row => row.spesialisasi, sortable: true },
     { name: 'Jadwal Praktek', selector: row => row.jadwal_praktek, sortable: true },
     { name: 'No Telp', selector: row => row.nomor_telepon, sortable: true },
@@ -124,20 +124,20 @@ function Dokter() {
   ], []);
 
   const filteredData = useMemo(() => {
-    if (!searchText) return dokterList;
+    if (!searchText) return terapisList;
     const lower = searchText.toLowerCase();
-    return dokterList.filter(d =>
-      (d.nama_dokter && d.nama_dokter.toLowerCase().includes(lower)) ||
+    return terapisList.filter(d =>
+      (d.nama_terapis && d.nama_terapis.toLowerCase().includes(lower)) ||
       (d.spesialisasi && d.spesialisasi.toLowerCase().includes(lower)) ||
       (d.jadwal_praktek && d.jadwal_praktek.toLowerCase().includes(lower)) ||
       (d.nomor_telepon && d.nomor_telepon.toLowerCase().includes(lower))
     );
-  }, [dokterList, searchText]);
+  }, [terapisList, searchText]);
 
   return (
     <div>
       {/* Header */}
-      <h1 className="text-3xl font-bold text-green-800 mb-8">Dokter</h1>
+      <h1 className="text-3xl font-bold text-green-800 mb-8">Terapis</h1>
 
       {/* Stats */}
       <div className="flex flex-col lg:flex-row gap-6 mb-8">
@@ -157,7 +157,7 @@ function Dokter() {
 
       {/* Table Title and Actions */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-green-800">Tabel Data Dokter</h2>
+        <h2 className="text-xl font-bold text-green-800">Tabel Data Terapis</h2>
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -170,7 +170,7 @@ function Dokter() {
             className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900"
             onClick={handleAdd}
           >
-            Tambah Dokter
+            Tambah Terapis
           </button>
         </div>
       </div>
@@ -184,7 +184,7 @@ function Dokter() {
           paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10}
           paginationRowsPerPageOptions={[5, 10, 20, 50]}
-          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data dokter.</div>}
+          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data terapis.</div>}
           customStyles={customStyles}
           highlightOnHover
           striped
@@ -198,17 +198,17 @@ function Dokter() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'
-                  ? 'Tambah Dokter'
+                  ? 'Tambah Terapis'
                   : modalType === 'edit'
-                    ? 'Edit Dokter'
-                    : 'Hapus Dokter'}
+                    ? 'Edit Terapis'
+                    : 'Hapus Terapis'}
               </h3>
               <button onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             {modalType === 'delete' ? (
               <form onSubmit={handleModalSubmit}>
                 <p className="mb-6">
-                  Apakah Anda yakin ingin menghapus dokter <b>{selectedDokter?.nama_dokter}</b>?
+                  Apakah Anda yakin ingin menghapus terapis <b>{selectedTerapis?.nama_terapis}</b>?
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
@@ -229,10 +229,10 @@ function Dokter() {
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
-                  <label className="block mb-1">Nama Dokter</label>
+                  <label className="block mb-1">Nama Terapis</label>
                   <input
-                    name="nama_dokter"
-                    defaultValue={selectedDokter?.nama_dokter || ''}
+                    name="nama_terapis"
+                    defaultValue={selectedTerapis?.nama_terapis || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
@@ -241,7 +241,7 @@ function Dokter() {
                   <label className="block mb-1">Spesialisasi</label>
                   <input
                     name="spesialisasi"
-                    defaultValue={selectedDokter?.spesialisasi || ''}
+                    defaultValue={selectedTerapis?.spesialisasi || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
@@ -250,7 +250,7 @@ function Dokter() {
                   <label className="block mb-1">Jadwal Praktek</label>
                   <input
                     name="jadwal_praktek"
-                    defaultValue={selectedDokter?.jadwal_praktek || ''}
+                    defaultValue={selectedTerapis?.jadwal_praktek || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
@@ -259,7 +259,7 @@ function Dokter() {
                   <label className="block mb-1">No Telp</label>
                   <input
                     name="nomor_telepon"
-                    defaultValue={selectedDokter?.nomor_telepon || ''}
+                    defaultValue={selectedTerapis?.nomor_telepon || ''}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
@@ -288,4 +288,4 @@ function Dokter() {
   );
 }
 
-export default Dokter;
+export default Terapis;

@@ -20,7 +20,7 @@ const getStats = (list) => [
 function RekamMedis() {
   const [rekamMedisList, setRekamMedisList] = useState([]);
   const [pasienList, setPasienList] = useState([]);
-  const [dokterList, setDokterList] = useState([]);
+  const [terapisList, setTerapisList] = useState([]);
   const [pelayananList, setPelayananList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add');
@@ -35,8 +35,8 @@ function RekamMedis() {
       setRekamMedisList(response.data);
       const pasienRes = await axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true });
       setPasienList(pasienRes.data);
-      const dokterRes = await axios.get(`${import.meta.env.VITE_API_URL}/dokter`, { withCredentials: true });
-      setDokterList(dokterRes.data);
+      const terapisRes = await axios.get(`${import.meta.env.VITE_API_URL}/terapis`, { withCredentials: true });
+      setTerapisList(terapisRes.data);
       const pelayananRes = await axios.get(`${import.meta.env.VITE_API_URL}/pelayanan`, { withCredentials: true });
       setPelayananList(pelayananRes.data);
     } catch (error) { console.error(error); }
@@ -57,7 +57,7 @@ function RekamMedis() {
         const form = e.target;
         const data = {
           diagnosa: form.diagnosa.value, tindakan: form.tindakan.value, catatan: form.catatan.value,
-          id_pasien: Number(form.id_pasien.value), id_dokter: Number(form.id_dokter.value), id_pelayanan: Number(form.id_pelayanan.value),
+          id_pasien: Number(form.id_pasien.value), id_terapis: Number(form.id_terapis.value), id_pelayanan: Number(form.id_pelayanan.value),
           berat_badan: form.berat_badan.value || null, suhu: form.suhu.value || null,
         };
         if (modalType === 'add') {
@@ -76,7 +76,7 @@ function RekamMedis() {
     { name: 'Jenis Kelamin', selector: row => row.pasien?.gender || '-', sortable: true,
       cell: row => row.pasien?.gender === 'L' ? 'Laki-laki' : row.pasien?.gender === 'P' ? 'Perempuan' : '-', width: '120px' },
     { name: 'Tgl Lahir', selector: row => row.pasien?.date_of_birth || '-', sortable: true, width: '110px' },
-    { name: 'Dokter', selector: row => row.dokter?.nama_dokter || '-', sortable: true },
+    { name: 'Terapis', selector: row => row.terapis?.nama_terapis || '-', sortable: true },
     { name: 'Pelayanan', selector: row => row.pelayanan?.nama_pelayanan || '-', sortable: true },
     { name: 'Diagnosa', selector: row => row.diagnosa || '-', sortable: true, wrap: true },
     { name: 'Tindakan', selector: row => row.tindakan || '-', sortable: true, wrap: true },
@@ -98,7 +98,7 @@ function RekamMedis() {
     const lower = searchText.toLowerCase();
     return rekamMedisList.filter(rm =>
       (rm.pasien?.name && rm.pasien.name.toLowerCase().includes(lower)) ||
-      (rm.dokter?.nama_dokter && rm.dokter.nama_dokter.toLowerCase().includes(lower)) ||
+      (rm.terapis?.nama_terapis && rm.terapis.nama_terapis.toLowerCase().includes(lower)) ||
       (rm.pelayanan?.nama_pelayanan && rm.pelayanan.nama_pelayanan.toLowerCase().includes(lower)) ||
       (rm.diagnosa && rm.diagnosa.toLowerCase().includes(lower)) ||
       (rm.tindakan && rm.tindakan.toLowerCase().includes(lower))
@@ -162,10 +162,10 @@ function RekamMedis() {
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-1">Dokter</label>
-                  <select name="id_dokter" defaultValue={selectedRekamMedis?.id_dokter || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Dokter --</option>
-                    {dokterList.map((d) => (<option key={d.id_dokter} value={d.id_dokter}>{d.nama_dokter}</option>))}
+                  <label className="block mb-1">Terapis</label>
+                  <select name="id_terapis" defaultValue={selectedRekamMedis?.id_terapis || ''} required className="w-full border px-3 py-2 rounded">
+                    <option value="">-- Pilih Terapis --</option>
+                    {terapisList.map((t) => (<option key={t.id_terapis} value={t.id_terapis}>{t.nama_terapis}</option>))}
                   </select>
                 </div>
                 <div>
