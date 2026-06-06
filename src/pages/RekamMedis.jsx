@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import { useNavigate } from 'react-router-dom';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -23,7 +24,9 @@ function RekamMedis() {
   const [terapisList, setTerapisList] = useState([]);
   const [pelayananList, setPelayananList] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showResepModal, setShowResepModal] = useState(false);
   const [modalType, setModalType] = useState('add');
+  const navigate = useNavigate();
   const [selectedRekamMedis, setSelectedRekamMedis] = useState(null);
   const [searchText, setSearchText] = useState('');
 
@@ -46,7 +49,8 @@ function RekamMedis() {
   const handleAdd = () => { setModalType('add'); setSelectedRekamMedis(null); setShowModal(true); };
   const handleEdit = (rm) => { setModalType('edit'); setSelectedRekamMedis(rm); setShowModal(true); };
   const handleDelete = (rm) => { setModalType('delete'); setSelectedRekamMedis(rm); setShowModal(true); };
-  const handleModalClose = () => { setShowModal(false); setSelectedRekamMedis(null); };
+  const handleKelolaResep = (rm) => { setSelectedRekamMedis(rm); setShowResepModal(true); };
+  const handleModalClose = () => { setShowModal(false); setShowResepModal(false); setSelectedRekamMedis(null); };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
@@ -57,7 +61,9 @@ function RekamMedis() {
         const form = e.target;
         const data = {
           diagnosa: form.diagnosa.value, tindakan: form.tindakan.value, catatan: form.catatan.value,
-          id_pasien: Number(form.id_pasien.value), id_terapis: Number(form.id_terapis.value), id_pelayanan: Number(form.id_pelayanan.value),
+          id_pasien: Number(form.id_pasien.value), 
+          id_terapis: form.id_terapis.value ? Number(form.id_terapis.value) : null, 
+          id_pelayanan: Number(form.id_pelayanan.value),
           berat_badan: form.berat_badan.value || null, suhu: form.suhu.value || null,
         };
         if (modalType === 'add') {
@@ -87,6 +93,7 @@ function RekamMedis() {
     { name: 'Catatan', selector: row => row.catatan || '-', sortable: true, wrap: true },
     { name: 'Aksi', cell: (row) => (
         <div className="flex gap-2">
+          <button className="text-green-600 hover:underline font-semibold" onClick={() => handleKelolaResep(row)}>Resep</button>
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
         </div>
@@ -163,7 +170,7 @@ function RekamMedis() {
                 </div>
                 <div>
                   <label className="block mb-1">Terapis</label>
-                  <select name="id_terapis" defaultValue={selectedRekamMedis?.id_terapis || ''} required className="w-full border px-3 py-2 rounded">
+                  <select name="id_terapis" defaultValue={selectedRekamMedis?.id_terapis || ''} className="w-full border px-3 py-2 rounded">
                     <option value="">-- Pilih Terapis --</option>
                     {terapisList.map((t) => (<option key={t.id_terapis} value={t.id_terapis}>{t.nama_terapis}</option>))}
                   </select>
@@ -211,6 +218,100 @@ function RekamMedis() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {showResepModal && selectedRekamMedis && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-green-800">
+                Kelola Resep Obat - Pasien {selectedRekamMedis.pasien?.name}
+              </h3>
+              <button onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            
+            <div className="mb-4">
+              <h4 className="font-semibold text-gray-700 mb-2">Daftar Resep untuk Rekam Medis Ini:</h4>
+              {selectedRekamMedis.resep_obat && selectedRekamMedis.resep_obat.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedRekamMedis.resep_obat.map(resep => (
+                    <div key={resep.id_resep} className="border p-4 rounded-lg flex justify-between items-center bg-gray-50">
+                      <div>
+                        <div className="font-semibold">Resep #{resep.id_resep}</div>
+                        <div className="text-sm text-gray-600">Tanggal: {resep.tanggal_resep}</div>
+                        <div className="text-sm">Status: <span className={resep.status_resep === 'Aktif' ? 'text-green-600 font-bold' : 'text-blue-600 font-bold'}>{resep.status_resep}</span></div>
+                        <div className="text-xs text-gray-500 mt-1">Total Obat: {resep.details ? resep.details.length : 0} jenis</div>
+                      </div>
+                      <button 
+                        onClick={() => navigate(`/resep-obat/${resep.id_resep}/detail`)}
+                        className="bg-green-700 text-white px-4 py-2 rounded font-medium hover:bg-green-800"
+                      >
+                        Kelola Detail Obat
+                      </button>
+                    </div>
+                  ))}
+                  
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const todayDate = new Date();
+                        const year = todayDate.getFullYear();
+                        const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(todayDate.getDate()).padStart(2, '0');
+                        const todayStr = `${year}-${month}-${day}`;
+                  
+                        await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, {
+                          id_rekam_medis: selectedRekamMedis.id_rekam_medis,
+                          tanggal_resep: todayStr,
+                          status_resep: 'Aktif'
+                        }, { withCredentials: true });
+                        setShowResepModal(false);
+                        fetchData();
+                      } catch (error) {
+                        console.error(error);
+                      }
+                    }}
+                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded font-medium hover:bg-blue-700 w-full"
+                  >
+                    + Buat Resep Baru Lainnya
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-gray-50 rounded border border-dashed border-gray-300">
+                  <p className="text-gray-500 mb-4">Belum ada resep obat untuk rekam medis ini.</p>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const todayDate = new Date();
+                        const year = todayDate.getFullYear();
+                        const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(todayDate.getDate()).padStart(2, '0');
+                        const todayStr = `${year}-${month}-${day}`;
+                  
+                        await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, {
+                          id_rekam_medis: selectedRekamMedis.id_rekam_medis,
+                          tanggal_resep: todayStr,
+                          status_resep: 'Aktif'
+                        }, { withCredentials: true });
+                        setShowResepModal(false);
+                        fetchData();
+                      } catch (error) {
+                        console.error(error);
+                      }
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded font-medium hover:bg-blue-700"
+                  >
+                    + Buat Resep Baru
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <button onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Tutup</button>
+            </div>
           </div>
         </div>
       )}

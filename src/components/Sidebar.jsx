@@ -23,7 +23,6 @@ function Sidebar() {
       { to: '/dashboard/dokter', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
       { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
       { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
-      { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
     ];
   } else if (role === 'apoteker') {
     menu = [
