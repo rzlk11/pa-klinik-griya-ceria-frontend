@@ -16,11 +16,15 @@ function LoginForm() {
     setLoading(true);
     setLoginMsg("");
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
         email: email,
         password: password
       }, { withCredentials: true });
-      navigate('/dashboard');
+      const role = response.data.role;
+      localStorage.setItem('role', role);
+      if (role === 'dokter') navigate('/dashboard/dokter');
+      else if (role === 'apoteker') navigate('/dashboard/apoteker');
+      else navigate('/dashboard/admin');
     } catch (error) {
       if (error.response) {
         setLoginMsg(error.response.data.msg);

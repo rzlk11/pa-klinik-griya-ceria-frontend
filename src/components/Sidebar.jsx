@@ -3,17 +3,35 @@ import { Link, useLocation } from 'react-router-dom';
 
 function Sidebar() {
   const location = useLocation();
+  const role = localStorage.getItem('role') || 'admin';
 
-  const menu = [
-    { to: '/dashboard', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
-    { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
-    { to: '/terapis', icon: <i className="fa-solid fa-user-md"></i>, label: 'Terapis' },
-    { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
-    { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
-    { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
-    { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
-    { to: '/pelayanan-kesehatan', icon: <i className="fa-solid fa-hospital"></i>, label: 'Pelayanan Kesehatan' },
-  ];
+  let menu = [];
+
+  if (role === 'admin') {
+    menu = [
+      { to: '/dashboard/admin', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
+      { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
+      { to: '/terapis', icon: <i className="fa-solid fa-user-md"></i>, label: 'Terapis' },
+      { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
+      { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
+      { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
+      { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
+      { to: '/pelayanan-kesehatan', icon: <i className="fa-solid fa-hospital"></i>, label: 'Pelayanan Kesehatan' },
+    ];
+  } else if (role === 'dokter') {
+    menu = [
+      { to: '/dashboard/dokter', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
+      { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
+      { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
+      { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
+    ];
+  } else if (role === 'apoteker') {
+    menu = [
+      { to: '/dashboard/apoteker', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
+      { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
+      { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
+    ];
+  }
 
   return (
     <aside className="w-64 bg-white border-r min-h-screen flex flex-col">

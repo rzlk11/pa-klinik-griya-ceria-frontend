@@ -1,7 +1,9 @@
 // src/App.jsx
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import DokterDashboard from './pages/DokterDashboard';
+import ApotekerDashboard from './pages/ApotekerDashboard';
 import MainLayout from './components/MainLayout';
 import AuthLayout from './components/AuthLayout';
 import LoginForm from './components/LoginForm';
@@ -24,7 +26,9 @@ function App() {
           <Route path='/register' element={<RegisterForm />} />
         </Route>
         <Route element={<MainLayout />}>
-          <Route path='/dashboard' element={<Dashboard />} />
+          <Route path='/dashboard/admin' element={<AdminDashboard />} />
+          <Route path='/dashboard/dokter' element={<DokterDashboard />} />
+          <Route path='/dashboard/apoteker' element={<ApotekerDashboard />} />
           <Route path='/pasien' element={<Pasien />} />
           <Route path='/pasien/:id' element={<DetailPasien />} />
           <Route path='/terapis' element={<Terapis />} />
