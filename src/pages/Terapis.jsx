@@ -90,6 +90,7 @@ function Terapis() {
           spesialisasi: form.spesialisasi.value,
           jadwal_praktek: form.jadwal_praktek.value,
           nomor_telepon: form.nomor_telepon.value,
+          kode_warna: form.kode_warna.value,
         };
 
         if (modalType === 'add') {
@@ -111,6 +112,12 @@ function Terapis() {
     { name: 'Spesialis', selector: row => row.spesialisasi, sortable: true },
     { name: 'Jadwal Praktek', selector: row => row.jadwal_praktek, sortable: true },
     { name: 'No Telp', selector: row => row.nomor_telepon, sortable: true },
+    { name: 'Warna', cell: row => (
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full border border-gray-300" style={{ backgroundColor: row.kode_warna || '#cccccc' }}></div>
+          <span className="text-xs text-gray-500">{row.kode_warna || '-'}</span>
+        </div>
+      ), width: '120px' },
     {
       name: 'Aksi',
       cell: (row) => (
@@ -263,6 +270,18 @@ function Terapis() {
                     required
                     className="w-full border px-3 py-2 rounded"
                   />
+                </div>
+                <div>
+                  <label className="block mb-1">Kode Warna</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      name="kode_warna"
+                      defaultValue={selectedTerapis?.kode_warna || '#166534'}
+                      className="w-12 h-12 p-1 rounded cursor-pointer"
+                    />
+                    <span className="text-sm text-gray-500">Pilih warna untuk penanda transaksi</span>
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button

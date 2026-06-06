@@ -25,6 +25,7 @@ function Transaksi() {
   const [pelayananList, setPelayananList] = useState([]);
   const [resepList, setResepList] = useState([]);
   const [rekamMedisList, setRekamMedisList] = useState([]);
+  const [terapisList, setTerapisList] = useState([]);
   
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
@@ -49,6 +50,8 @@ function Transaksi() {
       setResepList(resRes.data);
       const rmRes = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true });
       setRekamMedisList(rmRes.data);
+      const terapisRes = await axios.get(`${import.meta.env.VITE_API_URL}/terapis`, { withCredentials: true });
+      setTerapisList(terapisRes.data);
     } catch (error) { console.error(error); }
   };
 
@@ -76,6 +79,7 @@ function Transaksi() {
         if(form.id_pasien.value) formData.append("id_pasien", form.id_pasien.value);
         if(form.id_pelayanan.value) formData.append("id_pelayanan", form.id_pelayanan.value);
         if(form.id_resep.value) formData.append("id_resep", form.id_resep.value);
+        if(form.id_terapis.value) formData.append("id_terapis", form.id_terapis.value);
         formData.append("tanggal_transaksi", form.tanggal_transaksi.value);
         formData.append("total_biaya", form.total_biaya.value);
         formData.append("status_pembayaran", form.status_pembayaran.value);
@@ -94,6 +98,15 @@ function Transaksi() {
   const columns = useMemo(() => [
     { name: 'ID', selector: row => row.id_transaksi, sortable: true, width: '70px' },
     { name: 'Pasien', selector: row => row.pasien?.name || '-', sortable: true },
+    { name: 'Terapis', cell: row => {
+        if (!row.terapis) return '-';
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: row.terapis.kode_warna || '#cccccc' }}></div>
+            <span>{row.terapis.nama_terapis}</span>
+          </div>
+        )
+      }, sortable: true },
     { name: 'Pelayanan', selector: row => row.pelayanan?.nama_pelayanan || '-', sortable: true },
     { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '180px', wrap: true, cell: row => {
         if (!row.id_resep) return '-';
@@ -221,6 +234,15 @@ function Transaksi() {
                           );
                         })
                     )}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1">Terapis</label>
+                  <select name="id_terapis" defaultValue={selectedTransaksi?.id_terapis || ''} className="w-full border px-3 py-2 rounded">
+                    <option value="">-- Pilih Terapis --</option>
+                    {terapisList.map(t => (
+                      <option key={t.id_terapis} value={t.id_terapis}>{t.nama_terapis}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
