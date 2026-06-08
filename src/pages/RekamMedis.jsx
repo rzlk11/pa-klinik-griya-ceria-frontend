@@ -262,13 +262,16 @@ function RekamMedis() {
                         const day = String(todayDate.getDate()).padStart(2, '0');
                         const todayStr = `${year}-${month}-${day}`;
                   
-                        await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, {
+                        const response = await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, {
                           id_rekam_medis: selectedRekamMedis.id_rekam_medis,
                           tanggal_resep: todayStr,
                           status_resep: 'Aktif'
                         }, { withCredentials: true });
                         setShowResepModal(false);
                         fetchData();
+                        if (response.data?.data?.id_resep) {
+                          navigate(`/resep-obat/${response.data.data.id_resep}/detail`);
+                        }
                       } catch (error) {
                         console.error(error);
                       }
@@ -290,13 +293,16 @@ function RekamMedis() {
                         const day = String(todayDate.getDate()).padStart(2, '0');
                         const todayStr = `${year}-${month}-${day}`;
                   
-                        await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, {
+                        const response = await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, {
                           id_rekam_medis: selectedRekamMedis.id_rekam_medis,
                           tanggal_resep: todayStr,
                           status_resep: 'Aktif'
                         }, { withCredentials: true });
                         setShowResepModal(false);
                         fetchData();
+                        if (response.data?.data?.id_resep) {
+                          navigate(`/resep-obat/${response.data.data.id_resep}/detail`);
+                        }
                       } catch (error) {
                         console.error(error);
                       }

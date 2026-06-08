@@ -26,6 +26,30 @@ function KelolaDetailResep() {
   const [modalType, setModalType] = useState('add');
   const [selectedDetail, setSelectedDetail] = useState(null);
 
+  const [isPuyer, setIsPuyer] = useState(false);
+  const [selectedObatId, setSelectedObatId] = useState('');
+  const [dosisPuyer, setDosisPuyer] = useState('');
+  const [permintaanPuyer, setPermintaanPuyer] = useState('');
+  const [jumlahObatValue, setJumlahObatValue] = useState('');
+
+  const selectedObat = useMemo(() => obatList.find(o => o.id_obat === Number(selectedObatId)), [obatList, selectedObatId]);
+
+  const calculatedJumlah = useMemo(() => {
+    if (!isPuyer || !selectedObat || !dosisPuyer || !permintaanPuyer) return '';
+    const kekuatan = parseFloat(selectedObat.kekuatan);
+    if (isNaN(kekuatan) || kekuatan === 0) return 0;
+    const dosis = parseFloat(dosisPuyer);
+    const permintaan = parseFloat(permintaanPuyer);
+    if (isNaN(dosis) || isNaN(permintaan)) return 0;
+    return Math.ceil((dosis / kekuatan) * permintaan);
+  }, [isPuyer, selectedObat, dosisPuyer, permintaanPuyer]);
+
+  useEffect(() => {
+    if (isPuyer && calculatedJumlah !== '') {
+      setJumlahObatValue(calculatedJumlah);
+    }
+  }, [isPuyer, calculatedJumlah]);
+
   const fetchData = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat/${id}`, { withCredentials: true });
@@ -45,8 +69,16 @@ function KelolaDetailResep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleAdd = () => { setModalType('add'); setSelectedDetail(null); setShowModal(true); };
-  const handleEdit = (detail) => { setModalType('edit'); setSelectedDetail(detail); setShowModal(true); };
+  const handleAdd = () => { 
+    setModalType('add'); setSelectedDetail(null); 
+    setIsPuyer(false); setSelectedObatId(''); setDosisPuyer(''); setPermintaanPuyer(''); setJumlahObatValue('');
+    setShowModal(true); 
+  };
+  const handleEdit = (detail) => { 
+    setModalType('edit'); setSelectedDetail(detail); 
+    setIsPuyer(false); setSelectedObatId(detail.id_obat); setJumlahObatValue(detail.jumlah_obat);
+    setShowModal(true); 
+  };
   const handleDelete = (detail) => { setModalType('delete'); setSelectedDetail(detail); setShowModal(true); };
   const handleModalClose = () => { setShowModal(false); setSelectedDetail(null); };
 
@@ -60,7 +92,7 @@ function KelolaDetailResep() {
         const data = {
           id_resep: Number(id),
           id_obat: Number(form.id_obat.value),
-          dosis: form.dosis.value,
+          dosis: isPuyer ? `${dosisPuyer}mg (Puyer)` : form.dosis.value,
           jumlah_obat: Number(form.jumlah_obat.value),
           aturan_pakai: form.aturan_pakai.value,
           catatan_dokter: form.catatan_dokter.value
@@ -165,18 +197,45 @@ function KelolaDetailResep() {
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
                   <label className="block mb-1">Pilih Obat</label>
-                  <select name="id_obat" defaultValue={selectedDetail?.id_obat || ''} required className="w-full border px-3 py-2 rounded">
+                  <select name="id_obat" value={selectedObatId} onChange={(e) => setSelectedObatId(e.target.value)} required className="w-full border px-3 py-2 rounded">
                     <option value="">-- Pilih Obat --</option>
-                    {obatList.map((o) => (<option key={o.id_obat} value={o.id_obat}>{o.nama_obat} (Stok: {o.stok} {o.satuan})</option>))}
+                    {obatList.map((o) => (<option key={o.id_obat} value={o.id_obat}>{o.nama_obat} (Kekuatan: {o.kekuatan || '-'} | Stok: {o.stok} {o.satuan})</option>))}
                   </select>
                 </div>
+
                 <div>
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer bg-green-50 p-2 rounded border border-green-200">
+                    <input type="checkbox" checked={isPuyer} onChange={(e) => setIsPuyer(e.target.checked)} className="w-4 h-4 text-green-600 rounded border-gray-300" />
+                    <span className="font-semibold text-green-800">Gunakan Perhitungan Obat Puyer</span>
+                  </label>
+                </div>
+
+                {isPuyer && (
+                  <div className="p-4 bg-gray-50 rounded border border-gray-200 space-y-3 mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Rumus: Dosis / Kekuatan Obat * Permintaan Obat (Bungkus)</p>
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="block mb-1 text-sm font-medium">Dosis (mg)</label>
+                        <input type="number" step="0.01" value={dosisPuyer} onChange={(e) => setDosisPuyer(e.target.value)} placeholder="Contoh: 0.8" className="w-full border px-3 py-2 rounded text-sm" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block mb-1 text-sm font-medium">Permintaan Obat (Bungkus)</label>
+                        <input type="number" step="0.01" value={permintaanPuyer} onChange={(e) => setPermintaanPuyer(e.target.value)} placeholder="Contoh: 15" className="w-full border px-3 py-2 rounded text-sm" />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-700 bg-white p-2 rounded border">
+                      Kekuatan Obat: <span className="font-bold">{selectedObat ? selectedObat.kekuatan || 'Belum diatur' : '-'}</span> <br/>
+                      Estimasi Stok Terpotong: <span className="font-bold text-green-800">{calculatedJumlah || 0}</span>
+                    </div>
+                  </div>
+                )}
+                <div className={isPuyer ? 'hidden' : 'block'}>
                   <label className="block mb-1">Dosis</label>
-                  <input name="dosis" placeholder="Cth: 500mg" defaultValue={selectedDetail?.dosis || ''} required className="w-full border px-3 py-2 rounded" />
+                  <input name="dosis" placeholder="Cth: 500mg" defaultValue={selectedDetail?.dosis || ''} required={!isPuyer} className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div>
-                  <label className="block mb-1">Jumlah</label>
-                  <input name="jumlah_obat" type="number" min="1" placeholder="Cth: 10" defaultValue={selectedDetail?.jumlah_obat || ''} required className="w-full border px-3 py-2 rounded" />
+                  <label className="block mb-1">Jumlah (Stok Dipotong)</label>
+                  <input name="jumlah_obat" type="number" min="1" value={jumlahObatValue} onChange={(e) => setJumlahObatValue(e.target.value)} readOnly={isPuyer} placeholder="Cth: 10" required className={`w-full border px-3 py-2 rounded ${isPuyer ? 'bg-gray-200 cursor-not-allowed' : ''}`} />
                 </div>
                 <div>
                   <label className="block mb-1">Aturan Pakai</label>

@@ -76,6 +76,7 @@ function Obat() {
         const form = e.target;
         const data = {
           nama_obat: form.nama_obat.value,
+          kekuatan: form.kekuatan.value,
           jenis: form.jenis.value,
           stok: Number(form.stok.value),
           harga_per_unit: Number(form.harga_per_unit.value),
@@ -98,6 +99,7 @@ function Obat() {
   const columns = useMemo(() => [
     { name: 'ID', selector: row => row.id_obat, sortable: true, width: '80px' },
     { name: 'Nama Obat', selector: row => row.nama_obat, sortable: true },
+    { name: 'Kekuatan', selector: row => row.kekuatan, sortable: true },
     { name: 'Jenis', selector: row => row.jenis, sortable: true },
     { name: 'Stok', selector: row => row.stok, sortable: true, width: '100px' },
     {
@@ -229,6 +231,15 @@ function Obat() {
                     name="nama_obat"
                     defaultValue={selectedObat?.nama_obat || ''}
                     required
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Kekuatan</label>
+                  <input
+                    name="kekuatan"
+                    defaultValue={selectedObat?.kekuatan || ''}
+                    placeholder="Contoh: 500mg, 10ml, dll"
                     className="w-full border px-3 py-2 rounded"
                   />
                 </div>
