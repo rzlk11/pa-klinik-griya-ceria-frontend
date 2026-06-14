@@ -146,6 +146,7 @@ function DetailPasien() {
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-lg font-bold text-green-800"><i className="fa-solid fa-file-medical mr-2"></i>Riwayat Rekam Medis</h3>
           </div>
+          <div className="overflow-x-auto">
           <DataTable
             columns={rekamMedisColumns}
             data={pasien.rekam_medis || []}
@@ -156,12 +157,14 @@ function DetailPasien() {
             customStyles={customStyles}
           />
         </div>
+        </div>
 
         {/* Resep Obat */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-lg font-bold text-green-800"><i className="fa-solid fa-prescription mr-2"></i>Riwayat Resep Obat</h3>
           </div>
+          <div className="overflow-x-auto">
           <DataTable
             columns={resepObatColumns}
             data={pasien.reseps || []}
@@ -172,12 +175,14 @@ function DetailPasien() {
             customStyles={customStyles}
           />
         </div>
+        </div>
 
         {/* Transaksi */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-lg font-bold text-green-800"><i className="fa-solid fa-wallet mr-2"></i>Riwayat Transaksi</h3>
           </div>
+          <div className="overflow-x-auto">
           <DataTable
             columns={transaksiColumns}
             data={pasien.transaksi || []}
@@ -187,6 +192,7 @@ function DetailPasien() {
             noDataComponent={<div className="text-center text-gray-400 py-6">Belum ada riwayat transaksi.</div>}
             customStyles={customStyles}
           />
+        </div>
         </div>
       </div>
     </div>

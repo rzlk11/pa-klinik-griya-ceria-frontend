@@ -62,7 +62,7 @@ function PelayananKesehatan() {
     { name: 'Nama Pelayanan', selector: row => row.nama_pelayanan, sortable: true },
     { name: 'Deskripsi', selector: row => row.deskripsi || '-', sortable: true },
     { name: 'Harga', selector: row => row.harga, sortable: true, cell: row => `Rp ${Number(row.harga).toLocaleString('id-ID')}` },
-    { name: 'Aksi', cell: (row) => (
+    { name: 'Aksi', width: '180px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
@@ -102,7 +102,7 @@ function PelayananKesehatan() {
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
           noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data pelayanan.</div>}

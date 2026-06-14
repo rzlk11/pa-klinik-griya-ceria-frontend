@@ -10,9 +10,11 @@ function Sidebar() {
   if (role === 'admin') {
     menu = [
       { to: '/dashboard/admin', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
+      { to: '/antrian', icon: <i className="fa-solid fa-clipboard-list"></i>, label: 'Kunjungan' },
       { to: '/pasien', icon: <i className="fa-solid fa-user-group"></i>, label: 'Pasien' },
       { to: '/terapis', icon: <i className="fa-solid fa-user-md"></i>, label: 'Terapis' },
       { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
+      { to: '/vaksin', icon: <i className="fa-solid fa-syringe"></i>, label: 'Vaksin' },
       { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
       { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
       { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
@@ -28,6 +30,7 @@ function Sidebar() {
     menu = [
       { to: '/dashboard/apoteker', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
       { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
+      { to: '/vaksin', icon: <i className="fa-solid fa-syringe"></i>, label: 'Vaksin' },
       { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
     ];
   }

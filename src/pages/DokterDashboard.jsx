@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import DataTable from 'react-data-table-component';
 
 function DokterDashboard() {
   const navigate = useNavigate();
@@ -9,19 +10,22 @@ function DokterDashboard() {
   const [pasienCount, setPasienCount] = useState(0);
   const [rekamMedisCount, setRekamMedisCount] = useState(0);
   const [resepCount, setResepCount] = useState(0);
+  const [antrianList, setAntrianList] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [pasienRes, rekamMedisRes, resepRes] = await Promise.all([
+        const [pasienRes, rekamMedisRes, resepRes, antrianRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true }),
           axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true }),
           axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true }),
         ]);
 
         setPasienCount(pasienRes.data.length);
         setRekamMedisCount(rekamMedisRes.data.length);
         setResepCount(resepRes.data.length);
+        setAntrianList(antrianRes.data.filter(a => ['Menunggu', 'Diperiksa'].includes(a.status_antrian)));
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       }
@@ -45,6 +49,33 @@ function DokterDashboard() {
     { label: 'Total Rekam Medis', value: rekamMedisCount, icon: <i className="fa-solid fa-file-medical"></i> },
     { label: 'Total Resep Obat', value: resepCount, icon: <i className="fa-solid fa-prescription"></i> },
   ];
+
+  const columns = [
+    { name: 'No', selector: (row, index) => index + 1, width: '60px' },
+    { name: 'Pasien', selector: row => row.pasien?.name || '-', sortable: true },
+    { name: 'Dokter Tujuan', selector: row => row.terapis?.nama_terapis || '-', sortable: true },
+    { name: 'Keluhan Awal', selector: row => row.keluhan || '-' },
+    { name: 'BB / Suhu', cell: row => `${row.berat_badan ? row.berat_badan + 'kg' : '-'} / ${row.suhu ? row.suhu + '°C' : '-'}` },
+    { name: 'Status', cell: row => (
+        <span className={`px-2 py-1 rounded text-xs font-semibold ${row.status_antrian === 'Diperiksa' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+          {row.status_antrian}
+        </span>
+      ), sortable: true },
+    { name: 'Aksi', cell: row => (
+        <button 
+          className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 font-semibold text-sm"
+          onClick={() => navigate(`/pemeriksaan/${row.id_antrian}`)}
+        >
+          {row.status_antrian === 'Diperiksa' ? 'Lanjutkan' : 'Periksa'}
+        </button>
+      ), ignoreRowClick: true, width: '120px' }
+  ];
+
+  const customStyles = {
+    headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
+    headCells: { style: { color: '#166534', fontWeight: '700', fontSize: '14px' } },
+    rows: { style: { fontSize: '14px' } },
+  };
 
   return (
     <div>
@@ -86,9 +117,18 @@ function DokterDashboard() {
         ))}
       </div>
 
-      <div className="bg-white rounded border border-gray-200 p-6">
-        <h2 className="text-xl font-bold text-green-800 mb-4">Selamat Datang di Portal Dokter</h2>
-        <p className="text-gray-600">Gunakan menu di sebelah kiri untuk mengelola data pasien, melihat rekam medis, dan membuat resep obat.</p>
+      <div className="bg-white rounded border border-gray-200 p-6 mb-8">
+        <h2 className="text-xl font-bold text-green-800 mb-2">Antrian Pasien</h2>
+        <p className="text-gray-600 mb-6">Daftar pasien yang sedang menunggu atau sedang diperiksa hari ini.</p>
+        <div className="border rounded-lg overflow-hidden">
+          <DataTable 
+            columns={columns} 
+            data={antrianList} 
+            customStyles={customStyles}
+            noDataComponent={<div className="p-4 text-gray-500 text-center">Tidak ada antrian saat ini.</div>}
+            highlightOnHover
+          />
+        </div>
       </div>
     </div>
   );

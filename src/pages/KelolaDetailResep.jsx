@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import Select from 'react-select';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -115,12 +116,12 @@ function KelolaDetailResep() {
     { name: 'Jumlah', selector: row => row.jumlah_obat, sortable: true, cell: row => `${row.jumlah_obat} ${row.obat?.satuan || ''}` },
     { name: 'Aturan Pakai', selector: row => row.aturan_pakai, sortable: true, wrap: true },
     { name: 'Catatan Dokter', selector: row => row.catatan_dokter || '-', wrap: true },
-    { name: 'Aksi', cell: (row) => (
+    { name: 'Aksi', width: '180px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
         </div>
-      ), ignoreRowClick: true, width: '120px' },
+      ), ignoreRowClick: true },
   ], []);
 
   if (loading) return <div className="text-center py-20 text-gray-500">Memuat data...</div>;
@@ -160,7 +161,7 @@ function KelolaDetailResep() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <DataTable
           columns={columns}
           data={resep.details || []}
@@ -195,13 +196,26 @@ function KelolaDetailResep() {
               </form>
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
-                <div>
-                  <label className="block mb-1">Pilih Obat</label>
-                  <select name="id_obat" value={selectedObatId} onChange={(e) => setSelectedObatId(e.target.value)} required className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Obat --</option>
-                    {obatList.map((o) => (<option key={o.id_obat} value={o.id_obat}>{o.nama_obat} (Kekuatan: {o.kekuatan || '-'} | Stok: {o.stok} {o.satuan})</option>))}
-                  </select>
-                </div>
+                {(() => {
+                  const obatOptions = obatList.map(o => ({
+                    value: o.id_obat,
+                    label: `${o.nama_obat} (Kekuatan: ${o.kekuatan || '-'} | Stok: ${o.stok} ${o.satuan})`
+                  }));
+
+                  return (
+                    <div>
+                      <label className="block mb-1">Pilih Obat</label>
+                      <Select
+                        name="id_obat"
+                        options={obatOptions}
+                        value={obatOptions.find(o => o.value === Number(selectedObatId)) || null}
+                        onChange={(option) => setSelectedObatId(option ? option.value : '')}
+                        isClearable
+                        placeholder="-- Pilih Obat --"
+                      />
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <label className="flex items-center gap-2 mb-2 cursor-pointer bg-green-50 p-2 rounded border border-green-200">

@@ -119,7 +119,7 @@ function Terapis() {
         </div>
       ), width: '120px' },
     {
-      name: 'Aksi',
+      name: 'Aksi', width: '180px',
       cell: (row) => (
         <div className="flex gap-2">
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
@@ -183,7 +183,7 @@ function Terapis() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <DataTable
           columns={columns}
           data={filteredData}

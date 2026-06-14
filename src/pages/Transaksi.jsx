@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import Select from 'react-select';
+import TableFilter from '../components/TableFilter';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -15,8 +17,6 @@ const paginationComponentOptions = {
 
 const getStats = (list) => [
   { label: 'Total Transaksi', value: list.length, icon: <i className="fa-solid fa-wallet text-blue-600"></i> },
-  { label: 'Transaksi Lunas', value: list.filter(t => t.status_pembayaran === 'Lunas').length, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
-  { label: 'Belum Lunas', value: list.filter(t => t.status_pembayaran === 'Belum lunas').length, icon: <i className="fa-solid fa-triangle-exclamation text-yellow-500"></i> },
 ];
 
 function Transaksi() {
@@ -31,12 +31,44 @@ function Transaksi() {
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedTransaksi, setSelectedTransaksi] = useState(null);
   const [selectedPasienId, setSelectedPasienId] = useState('');
+  const [selectedPelayananId, setSelectedPelayananId] = useState('');
+  const [selectedResepId, setSelectedResepId] = useState('');
+  const [tanggalTransaksi, setTanggalTransaksi] = useState('');
+  const [totalBiaya, setTotalBiaya] = useState('');
+  const [rincianBiaya, setRincianBiaya] = useState({ pelayanan: 0, obat: 0 });
 
   const [previewImage, setPreviewImage] = useState('');
   const [fileImage, setFileImage] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [filters, setFilters] = useState({ startDate: '', endDate: '', idPasien: '', idTerapis: '' });
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    let biayaPelayanan = 0;
+    let biayaObat = 0;
+
+    if (selectedPelayananId) {
+      const pel = pelayananList.find(p => p.id_pelayanan === Number(selectedPelayananId));
+      if (pel && pel.harga) biayaPelayanan = Number(pel.harga);
+    }
+
+    if (selectedResepId) {
+      const res = resepList.find(r => r.id_resep === Number(selectedResepId));
+      if (res && res.details) {
+        res.details.forEach(d => {
+          if (d.obat && d.obat.harga_per_unit) {
+            biayaObat += d.jumlah_obat * Number(d.obat.harga_per_unit);
+          }
+        });
+      }
+    }
+
+    setRincianBiaya({ pelayanan: biayaPelayanan, obat: biayaObat });
+    if (modalType !== 'edit' || (modalType === 'edit' && (selectedPelayananId !== selectedTransaksi?.id_pelayanan || selectedResepId !== selectedTransaksi?.id_resep))) {
+      setTotalBiaya(biayaPelayanan + biayaObat);
+    }
+  }, [selectedPelayananId, selectedResepId, pelayananList, resepList, modalType, selectedTransaksi]);
 
   const fetchData = async () => {
     try {
@@ -57,10 +89,26 @@ function Transaksi() {
 
   const stats = getStats(transaksiList);
 
-  const handleAdd = () => { setModalType('add'); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); setSelectedPasienId(''); setShowModal(true); };
-  const handleEdit = (trx) => { setModalType('edit'); setSelectedTransaksi(trx); setPreviewImage(trx.bukti_transaksi || ''); setFileImage(''); setSelectedPasienId(trx.id_pasien || ''); setShowModal(true); };
+  const handleAdd = () => { 
+    setModalType('add'); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); 
+    setSelectedPasienId(''); setSelectedPelayananId(''); setSelectedResepId(''); 
+    setTanggalTransaksi(new Date().toISOString().split('T')[0]); setTotalBiaya(0);
+    setShowModal(true); 
+  };
+  const handleEdit = (trx) => { 
+    setModalType('edit'); setSelectedTransaksi(trx); setPreviewImage(trx.bukti_transaksi || ''); setFileImage(''); 
+    setSelectedPasienId(trx.id_pasien || ''); 
+    setSelectedPelayananId(trx.id_pelayanan || ''); 
+    setSelectedResepId(trx.id_resep || ''); 
+    setTanggalTransaksi(trx.tanggal_transaksi || ''); 
+    setTotalBiaya(trx.total_biaya || 0);
+    setShowModal(true); 
+  };
   const handleDelete = (trx) => { setModalType('delete'); setSelectedTransaksi(trx); setShowModal(true); };
-  const handleModalClose = () => { setShowModal(false); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); setSelectedPasienId(''); };
+  const handleModalClose = () => { 
+    setShowModal(false); setSelectedTransaksi(null); setPreviewImage(''); setFileImage(''); 
+    setSelectedPasienId(''); setSelectedPelayananId(''); setSelectedResepId(''); 
+  };
 
   const loadImage = (e) => {
     const image = e.target.files[0];
@@ -82,7 +130,6 @@ function Transaksi() {
         if(form.id_terapis.value) formData.append("id_terapis", form.id_terapis.value);
         formData.append("tanggal_transaksi", form.tanggal_transaksi.value);
         formData.append("total_biaya", form.total_biaya.value);
-        formData.append("status_pembayaran", form.status_pembayaran.value);
         if (fileImage) { formData.append("bukti_transaksi", fileImage); }
 
         if (modalType === 'add') {
@@ -121,15 +168,10 @@ function Transaksi() {
     } },
     { name: 'Tanggal', selector: row => row.tanggal_transaksi, sortable: true },
     { name: 'Total Biaya', selector: row => row.total_biaya, sortable: true, cell: row => `Rp ${Number(row.total_biaya).toLocaleString('id-ID')}` },
-    { name: 'Status', selector: row => row.status_pembayaran, sortable: true, cell: row => (
-        <span className={row.status_pembayaran === 'Lunas' ? 'text-green-700 font-semibold' : 'text-yellow-700 font-semibold'}>
-          {row.status_pembayaran}
-        </span>
-      ) },
     { name: 'Bukti', cell: row => row.bukti_transaksi ? (
         <a href={row.bukti_transaksi} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Lihat Bukti</a>
       ) : '-' },
-    { name: 'Aksi', cell: (row) => (
+    { name: 'Aksi', width: '180px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
           <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
@@ -138,15 +180,28 @@ function Transaksi() {
   ], [resepList]);
 
   const filteredData = useMemo(() => {
-    if (!searchText) return transaksiList;
-    const lower = searchText.toLowerCase();
-    return transaksiList.filter(t =>
-      (t.pasien?.name && t.pasien.name.toLowerCase().includes(lower)) ||
-      (t.pelayanan?.nama_pelayanan && t.pelayanan.nama_pelayanan.toLowerCase().includes(lower)) ||
-      (t.status_pembayaran && t.status_pembayaran.toLowerCase().includes(lower)) ||
-      (t.tanggal_transaksi && t.tanggal_transaksi.toLowerCase().includes(lower))
-    );
-  }, [transaksiList, searchText]);
+    let result = transaksiList;
+
+    if (filters.startDate && filters.endDate) {
+      result = result.filter(t => t.tanggal_transaksi >= filters.startDate && t.tanggal_transaksi <= filters.endDate);
+    }
+    if (filters.idPasien) {
+      result = result.filter(t => t.id_pasien === filters.idPasien);
+    }
+    if (filters.idTerapis) {
+      result = result.filter(t => t.id_terapis === filters.idTerapis);
+    }
+
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(t =>
+        (t.pasien?.name && t.pasien.name.toLowerCase().includes(lower)) ||
+        (t.pelayanan?.nama_pelayanan && t.pelayanan.nama_pelayanan.toLowerCase().includes(lower)) ||
+        (t.tanggal_transaksi && t.tanggal_transaksi.toLowerCase().includes(lower))
+      );
+    }
+    return result;
+  }, [transaksiList, searchText, filters]);
 
   return (
     <div>
@@ -171,7 +226,16 @@ function Transaksi() {
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow">
+      
+      <TableFilter 
+        onFilterChange={setFilters} 
+        pasienList={pasienList} 
+        terapisList={terapisList} 
+        showPasien={true} 
+        showTerapis={true} 
+      />
+
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
           noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data transaksi.</div>}
@@ -197,85 +261,101 @@ function Transaksi() {
               </form>
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
-                <div>
-                  <label className="block mb-1">Pasien</label>
-                  <select name="id_pasien" value={selectedPasienId} onChange={(e) => setSelectedPasienId(e.target.value)} className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Pasien --</option>
-                    {pasienList.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1">Pelayanan</label>
-                  <select name="id_pelayanan" defaultValue={selectedTransaksi?.id_pelayanan || ''} className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Pelayanan --</option>
-                    {pelayananList.map(p => (<option key={p.id_pelayanan} value={p.id_pelayanan}>{p.nama_pelayanan}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1">Resep</label>
-                  <select name="id_resep" defaultValue={selectedTransaksi?.id_resep || ''} className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Resep --</option>
-                    {!selectedPasienId ? (
-                      <option value="" disabled>Silakan pilih pasien terlebih dahulu</option>
-                    ) : (
-                      resepList
-                        .filter(r => {
-                          const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
-                          return rm && rm.id_pasien === Number(selectedPasienId);
-                        })
-                        .map(r => {
-                          const obatText = r.details?.length > 0 ? r.details.map(d => d.obat?.nama_obat).join(', ') : 'Tanpa obat';
-                          const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
-                          const namaPasien = rm?.pasien?.name || 'Pasien tidak diketahui';
-                          return (
-                            <option key={r.id_resep} value={r.id_resep}>
-                              ID: {r.id_resep} - {namaPasien} - {r.tanggal_resep} ({r.status_resep}) - Obat: {obatText}
-                            </option>
-                          );
-                        })
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1">Terapis</label>
-                  <select name="id_terapis" defaultValue={selectedTransaksi?.id_terapis || ''} className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Terapis --</option>
-                    {terapisList.map(t => (
-                      <option key={t.id_terapis} value={t.id_terapis}>{t.nama_terapis}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1">Tanggal Transaksi</label>
-                  <input name="tanggal_transaksi" type="date" defaultValue={selectedTransaksi?.tanggal_transaksi || ''} required className="w-full border px-3 py-2 rounded" />
-                </div>
-                <div>
-                  <label className="block mb-1">Total Biaya</label>
-                  <input name="total_biaya" type="number" min={0} defaultValue={selectedTransaksi?.total_biaya || ''} required className="w-full border px-3 py-2 rounded" />
-                </div>
-                <div>
-                  <label className="block mb-1">Status Pembayaran</label>
-                  <select name="status_pembayaran" defaultValue={selectedTransaksi?.status_pembayaran || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="">Pilih</option>
-                    <option value="Lunas">Lunas</option>
-                    <option value="Belum lunas">Belum lunas</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1">Bukti Transaksi</label>
-                  <input type="file" name="bukti_transaksi" accept="image/*" onChange={loadImage} className="w-full border px-3 py-2 rounded" />
-                  {previewImage ? (
-                    <figure className="mt-2">
-                      <img src={previewImage} alt="Preview Bukti" className="w-32 h-32 object-cover rounded shadow" />
-                    </figure>
-                  ) : ""}
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
-                  <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
-                    {modalType === 'add' ? 'Tambah' : 'Simpan'}
-                  </button>
-                </div>
+                {(() => {
+                  const pasienOptions = pasienList.map(p => ({ value: p.id, label: p.name }));
+                  const pelayananOptions = pelayananList.map(p => ({ value: p.id_pelayanan, label: p.nama_pelayanan }));
+                  const terapisOptions = terapisList.map(t => ({ value: t.id_terapis, label: t.nama_terapis }));
+                  
+                  const resepOptions = !selectedPasienId ? [] : resepList
+                    .filter(r => {
+                      const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
+                      return rm && rm.id_pasien === Number(selectedPasienId);
+                    })
+                    .map(r => {
+                      const obatText = r.details?.length > 0 ? r.details.map(d => d.obat?.nama_obat).join(', ') : 'Tanpa obat';
+                      const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
+                      const namaPasien = rm?.pasien?.name || 'Pasien tidak diketahui';
+                      return {
+                        value: r.id_resep,
+                        label: `ID: ${r.id_resep} - ${namaPasien} - ${r.tanggal_resep} (${r.status_resep}) - Obat: ${obatText}`
+                      };
+                    });
+
+                  return (
+                    <>
+                      <div>
+                        <label className="block mb-1">Pasien</label>
+                        <Select
+                          name="id_pasien"
+                          options={pasienOptions}
+                          value={pasienOptions.find(o => o.value === Number(selectedPasienId)) || null}
+                          onChange={(option) => setSelectedPasienId(option ? option.value : '')}
+                          isClearable
+                          placeholder="-- Pilih Pasien --"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Pelayanan</label>
+                        <Select
+                          name="id_pelayanan"
+                          options={pelayananOptions}
+                          value={pelayananOptions.find(o => o.value === Number(selectedPelayananId)) || null}
+                          onChange={(option) => setSelectedPelayananId(option ? option.value : '')}
+                          isClearable
+                          placeholder="-- Pilih Pelayanan --"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Resep</label>
+                        <Select
+                          name="id_resep"
+                          options={resepOptions}
+                          value={resepOptions.find(o => o.value === Number(selectedResepId)) || null}
+                          onChange={(option) => setSelectedResepId(option ? option.value : '')}
+                          isClearable
+                          isDisabled={!selectedPasienId}
+                          placeholder={selectedPasienId ? "-- Pilih Resep --" : "Silakan pilih pasien terlebih dahulu"}
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Terapis</label>
+                        <Select
+                          name="id_terapis"
+                          options={terapisOptions}
+                          defaultValue={terapisOptions.find(o => o.value === selectedTransaksi?.id_terapis) || null}
+                          isClearable
+                          placeholder="-- Pilih Terapis --"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Tanggal Transaksi</label>
+                        <input name="tanggal_transaksi" type="date" value={tanggalTransaksi} onChange={(e) => setTanggalTransaksi(e.target.value)} required className="w-full border px-3 py-2 rounded" />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Total Biaya (Rp)</label>
+                        <input name="total_biaya" type="number" value={totalBiaya} onChange={(e) => setTotalBiaya(e.target.value)} required className="w-full border px-3 py-2 rounded" />
+                        <div className="text-xs text-gray-500 mt-1">
+                          Rincian: Pelayanan Rp {rincianBiaya.pelayanan.toLocaleString('id-ID')} + Obat Rp {rincianBiaya.obat.toLocaleString('id-ID')}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block mb-1">Bukti Transaksi</label>
+                        <input type="file" name="bukti_transaksi" accept="image/*" onChange={loadImage} className="w-full border px-3 py-2 rounded" />
+                        {previewImage ? (
+                          <figure className="mt-2">
+                            <img src={previewImage} alt="Preview Bukti" className="w-32 h-32 object-cover rounded shadow" />
+                          </figure>
+                        ) : ""}
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
+                        <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
+                          {modalType === 'add' ? 'Tambah' : 'Simpan'}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </form>
             )}
           </div>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
+import TableFilter from '../components/TableFilter';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -29,6 +31,7 @@ function RekamMedis() {
   const navigate = useNavigate();
   const [selectedRekamMedis, setSelectedRekamMedis] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [filters, setFilters] = useState({ startDate: '', endDate: '', idPasien: '', idTerapis: '' });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -78,6 +81,7 @@ function RekamMedis() {
 
   const columns = useMemo(() => [
     { name: 'ID', selector: row => row.id_rekam_medis, sortable: true, width: '70px' },
+    { name: 'Tgl Rekam Medis', selector: row => row.createdAt ? new Date(row.createdAt).toLocaleDateString('id-ID') : '-', sortable: true, width: '130px' },
     { name: 'Nama Pasien', selector: row => row.pasien?.name || '-', sortable: true },
     { name: 'Jenis Kelamin', selector: row => row.pasien?.gender || '-', sortable: true,
       cell: row => row.pasien?.gender === 'L' ? 'Laki-laki' : row.pasien?.gender === 'P' ? 'Perempuan' : '-', width: '120px' },
@@ -91,7 +95,7 @@ function RekamMedis() {
     { name: 'Suhu', selector: row => row.suhu, sortable: true, width: '100px',
       cell: row => row.suhu ? `${row.suhu} °C` : '-' },
     { name: 'Catatan', selector: row => row.catatan || '-', sortable: true, wrap: true },
-    { name: 'Aksi', cell: (row) => (
+    { name: 'Aksi', width: '180px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-green-600 hover:underline font-semibold" onClick={() => handleKelolaResep(row)}>Resep</button>
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
@@ -101,16 +105,34 @@ function RekamMedis() {
   ], []);
 
   const filteredData = useMemo(() => {
-    if (!searchText) return rekamMedisList;
-    const lower = searchText.toLowerCase();
-    return rekamMedisList.filter(rm =>
-      (rm.pasien?.name && rm.pasien.name.toLowerCase().includes(lower)) ||
-      (rm.terapis?.nama_terapis && rm.terapis.nama_terapis.toLowerCase().includes(lower)) ||
-      (rm.pelayanan?.nama_pelayanan && rm.pelayanan.nama_pelayanan.toLowerCase().includes(lower)) ||
-      (rm.diagnosa && rm.diagnosa.toLowerCase().includes(lower)) ||
-      (rm.tindakan && rm.tindakan.toLowerCase().includes(lower))
-    );
-  }, [rekamMedisList, searchText]);
+    let result = rekamMedisList;
+
+    if (filters.startDate && filters.endDate) {
+      result = result.filter(rm => {
+        if (!rm.createdAt) return false;
+        const rmDate = rm.createdAt.split('T')[0];
+        return rmDate >= filters.startDate && rmDate <= filters.endDate;
+      });
+    }
+    if (filters.idPasien) {
+      result = result.filter(rm => rm.id_pasien === filters.idPasien);
+    }
+    if (filters.idTerapis) {
+      result = result.filter(rm => rm.id_terapis === filters.idTerapis);
+    }
+
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(rm =>
+        (rm.pasien?.name && rm.pasien.name.toLowerCase().includes(lower)) ||
+        (rm.terapis?.nama_terapis && rm.terapis.nama_terapis.toLowerCase().includes(lower)) ||
+        (rm.pelayanan?.nama_pelayanan && rm.pelayanan.nama_pelayanan.toLowerCase().includes(lower)) ||
+        (rm.diagnosa && rm.diagnosa.toLowerCase().includes(lower)) ||
+        (rm.tindakan && rm.tindakan.toLowerCase().includes(lower))
+      );
+    }
+    return result;
+  }, [rekamMedisList, searchText, filters]);
 
   return (
     <div>
@@ -135,7 +157,16 @@ function RekamMedis() {
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow">
+
+      <TableFilter 
+        onFilterChange={setFilters} 
+        pasienList={pasienList} 
+        terapisList={terapisList} 
+        showPasien={true} 
+        showTerapis={true} 
+      />
+
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
           noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data rekam medis.</div>}
@@ -164,31 +195,31 @@ function RekamMedis() {
                 <div>
                   <label className="block mb-1">Pasien</label>
                   <select name="id_pasien" defaultValue={selectedRekamMedis?.id_pasien || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Pasien --</option>
-                    {pasienList.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                    <option value="" disabled>Pilih Pasien</option>
+                    {pasienList.map(p => <option key={p.id_pasien || p.id} value={p.id_pasien || p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block mb-1">Terapis</label>
                   <select name="id_terapis" defaultValue={selectedRekamMedis?.id_terapis || ''} className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Terapis --</option>
-                    {terapisList.map((t) => (<option key={t.id_terapis} value={t.id_terapis}>{t.nama_terapis}</option>))}
+                    <option value="">Pilih Terapis (Opsional)</option>
+                    {terapisList.map(t => <option key={t.id_terapis || t.id} value={t.id_terapis || t.id}>{t.nama_terapis}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block mb-1">Pelayanan</label>
                   <select name="id_pelayanan" defaultValue={selectedRekamMedis?.id_pelayanan || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Pelayanan --</option>
-                    {pelayananList.map((p) => (<option key={p.id_pelayanan} value={p.id_pelayanan}>{p.nama_pelayanan}</option>))}
+                    <option value="" disabled>Pilih Pelayanan</option>
+                    {pelayananList.map(p => <option key={p.id_pelayanan || p.id} value={p.id_pelayanan || p.id}>{p.nama_pelayanan}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block mb-1">Diagnosa</label>
-                  <textarea name="diagnosa" defaultValue={selectedRekamMedis?.diagnosa || ''} required className="w-full border px-3 py-2 rounded" />
+                  <input name="diagnosa" defaultValue={selectedRekamMedis?.diagnosa || ''} required className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div>
                   <label className="block mb-1">Tindakan</label>
-                  <textarea name="tindakan" defaultValue={selectedRekamMedis?.tindakan || ''} required className="w-full border px-3 py-2 rounded" />
+                  <input name="tindakan" defaultValue={selectedRekamMedis?.tindakan || ''} required className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div className="flex gap-4">
                   <div className="flex-1">

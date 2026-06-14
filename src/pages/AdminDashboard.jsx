@@ -123,7 +123,6 @@ function Dashboard() {
   const stats = [
     { label: 'Total Pasien', value: pasienCount, icon: <i className="fa-solid fa-user-group"></i> },
     { label: 'Total Terapis', value: terapisCount, icon: <i className="fa-solid fa-user-md"></i> },
-    { label: 'Total Jenis Obat', value: obatCount, icon: <i className="fa-solid fa-capsules"></i> },
     { label: 'Total Transaksi Hari ini', value: formatRupiah(todayTransaksi), icon: <i className="fa-solid fa-wallet"></i> },
   ];
 
@@ -176,7 +175,7 @@ function Dashboard() {
         )}
       </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, idx) => (
           <div key={idx} className="bg-white rounded border border-gray-200 p-5 flex flex-col items-start">
             <div className="text-gray-400 text-sm flex items-center mb-4">

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
-import Select from 'react-select';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -18,18 +17,11 @@ const paginationComponentOptions = {
   selectAllRowsItemText: 'Semua',
 };
 
-const stats = [
-  { label: 'Total Obat', value: 6, icon: <i className="fa-solid fa-capsules"></i> },
-  { label: 'Obat Stok Rendah', value: 2, icon: <i className="fa-solid fa-triangle-exclamation text-yellow-500"></i> },
-  { label: 'Obat Stok Aman', value: 4, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
-];
-
-
-function Obat() {
-  const [obatList, setObatList] = useState([]);
+function Vaksin() {
+  const [vaksinList, setVaksinList] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
-  const [selectedObat, setSelectedObat] = useState(null);
+  const [selectedVaksin, setSelectedVaksin] = useState(null);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
@@ -38,8 +30,8 @@ function Obat() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/obat`, { withCredentials: true });
-      setObatList(response.data);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/vaksin`, { withCredentials: true });
+      setVaksinList(response.data);
     } catch (error) {
       console.error(error);
     }
@@ -47,37 +39,36 @@ function Obat() {
 
   const handleAdd = () => {
     setModalType('add');
-    setSelectedObat(null);
+    setSelectedVaksin(null);
     setShowModal(true);
   };
 
-  const handleEdit = (obat) => {
+  const handleEdit = (vaksin) => {
     setModalType('edit');
-    setSelectedObat(obat);
+    setSelectedVaksin(vaksin);
     setShowModal(true);
   };
 
-  const handleDelete = (obat) => {
+  const handleDelete = (vaksin) => {
     setModalType('delete');
-    setSelectedObat(obat);
+    setSelectedVaksin(vaksin);
     setShowModal(true);
   };
 
   const handleModalClose = () => {
     setShowModal(false);
-    setSelectedObat(null);
+    setSelectedVaksin(null);
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {
       if (modalType === 'delete') {
-        await axios.delete(`${import.meta.env.VITE_API_URL}/obat/${selectedObat.id_obat}`, { withCredentials: true });
+        await axios.delete(`${import.meta.env.VITE_API_URL}/vaksin/${selectedVaksin.id_vaksin}`, { withCredentials: true });
       } else {
         const form = e.target;
         const data = {
-          nama_obat: form.nama_obat.value,
-          kekuatan: form.kekuatan.value,
+          nama_vaksin: form.nama_vaksin.value,
           jenis: form.jenis.value,
           stok: Number(form.stok.value),
           harga_per_unit: Number(form.harga_per_unit.value),
@@ -85,9 +76,9 @@ function Obat() {
         };
 
         if (modalType === 'add') {
-          await axios.post(`${import.meta.env.VITE_API_URL}/obat`, data, { withCredentials: true });
+          await axios.post(`${import.meta.env.VITE_API_URL}/vaksin`, data, { withCredentials: true });
         } else if (modalType === 'edit') {
-          await axios.patch(`${import.meta.env.VITE_API_URL}/obat/${selectedObat.id_obat}`, data, { withCredentials: true });
+          await axios.patch(`${import.meta.env.VITE_API_URL}/vaksin/${selectedVaksin.id_vaksin}`, data, { withCredentials: true });
         }
       }
       fetchData();
@@ -98,9 +89,8 @@ function Obat() {
   };
 
   const columns = useMemo(() => [
-    { name: 'ID', selector: row => row.id_obat, sortable: true, width: '80px' },
-    { name: 'Nama Obat', selector: row => row.nama_obat, sortable: true },
-    { name: 'Kekuatan', selector: row => row.kekuatan, sortable: true },
+    { name: 'ID', selector: row => row.id_vaksin, sortable: true, width: '80px' },
+    { name: 'Nama Vaksin', selector: row => row.nama_vaksin, sortable: true },
     { name: 'Jenis', selector: row => row.jenis, sortable: true },
     { name: 'Stok', selector: row => row.stok, sortable: true, width: '100px' },
     {
@@ -123,19 +113,25 @@ function Obat() {
   ], []);
 
   const filteredData = useMemo(() => {
-    if (!searchText) return obatList;
+    if (!searchText) return vaksinList;
     const lower = searchText.toLowerCase();
-    return obatList.filter(o =>
-      (o.nama_obat && o.nama_obat.toLowerCase().includes(lower)) ||
+    return vaksinList.filter(o =>
+      (o.nama_vaksin && o.nama_vaksin.toLowerCase().includes(lower)) ||
       (o.jenis && o.jenis.toLowerCase().includes(lower)) ||
       (o.satuan && o.satuan.toLowerCase().includes(lower))
     );
-  }, [obatList, searchText]);
+  }, [vaksinList, searchText]);
+
+  const stats = [
+    { label: 'Total Vaksin', value: vaksinList.length, icon: <i className="fa-solid fa-syringe text-blue-500"></i> },
+    { label: 'Vaksin Stok Rendah', value: vaksinList.filter(v => v.stok < 10).length, icon: <i className="fa-solid fa-triangle-exclamation text-yellow-500"></i> },
+    { label: 'Vaksin Stok Aman', value: vaksinList.filter(v => v.stok >= 10).length, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
+  ];
 
   return (
     <div>
       {/* Header */}
-      <h1 className="text-3xl font-bold text-green-800 mb-8">Obat</h1>
+      <h1 className="text-3xl font-bold text-green-800 mb-8">Vaksin</h1>
 
       {/* Stats */}
       <div className="flex flex-col lg:flex-row gap-6 mb-8">
@@ -155,7 +151,7 @@ function Obat() {
 
       {/* Table Title and Actions */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-green-800">Tabel Data Obat</h2>
+        <h2 className="text-xl font-bold text-green-800">Tabel Data Vaksin</h2>
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -168,7 +164,7 @@ function Obat() {
             className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900"
             onClick={handleAdd}
           >
-            Tambah Obat
+            Tambah Vaksin
           </button>
         </div>
       </div>
@@ -182,7 +178,7 @@ function Obat() {
           paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10}
           paginationRowsPerPageOptions={[5, 10, 20, 50]}
-          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data obat.</div>}
+          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data vaksin.</div>}
           customStyles={customStyles}
           highlightOnHover
           striped
@@ -196,17 +192,17 @@ function Obat() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
                 {modalType === 'add'
-                  ? 'Tambah Obat'
+                  ? 'Tambah Vaksin'
                   : modalType === 'edit'
-                  ? 'Edit Obat'
-                  : 'Hapus Obat'}
+                  ? 'Edit Vaksin'
+                  : 'Hapus Vaksin'}
               </h3>
               <button onClick={handleModalClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
             </div>
             {modalType === 'delete' ? (
               <form onSubmit={handleModalSubmit}>
                 <p className="mb-6">
-                  Apakah Anda yakin ingin menghapus obat <b>{selectedObat?.nama_obat}</b>?
+                  Apakah Anda yakin ingin menghapus vaksin <b>{selectedVaksin?.nama_vaksin}</b>?
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
@@ -225,96 +221,74 @@ function Obat() {
                 </div>
               </form>
             ) : (
-            <form onSubmit={handleModalSubmit} className="space-y-4">
-              {(() => {
-                const jenisOptions = [
-                  { value: 'Tablet', label: 'Tablet' },
-                  { value: 'Kapsul', label: 'Kapsul' },
-                  { value: 'Sirup', label: 'Sirup' },
-                  { value: 'Salep', label: 'Salep' },
-                  { value: 'Lainnya', label: 'Lainnya' }
-                ];
-                
-                return (
-                  <>
-                    <div>
-                      <label className="block mb-1">Nama Obat</label>
-                      <input
-                        name="nama_obat"
-                        defaultValue={selectedObat?.nama_obat || ''}
-                        required
-                        className="w-full border px-3 py-2 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1">Kekuatan</label>
-                      <input
-                        name="kekuatan"
-                        defaultValue={selectedObat?.kekuatan || ''}
-                        placeholder="Contoh: 500mg, 10ml, dll"
-                        className="w-full border px-3 py-2 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1">Jenis</label>
-                      <Select
-                        name="jenis"
-                        options={jenisOptions}
-                        defaultValue={jenisOptions.find(o => o.value === selectedObat?.jenis) || null}
-                        isClearable
-                        placeholder="Pilih Jenis"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1">Stok</label>
-                      <input
-                        name="stok"
-                        type="number"
-                        min={0}
-                        defaultValue={selectedObat?.stok || ''}
-                        required
-                        className="w-full border px-3 py-2 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1">Harga per Unit</label>
-                      <input
-                        name="harga_per_unit"
-                        type="number"
-                        min={0}
-                        defaultValue={selectedObat?.harga_per_unit || ''}
-                        required
-                        className="w-full border px-3 py-2 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1">Satuan</label>
-                      <input
-                        name="satuan"
-                        defaultValue={selectedObat?.satuan || ''}
-                        required
-                        className="w-full border px-3 py-2 rounded"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={handleModalClose}
-                        className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-                      >
-                        Batal
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800"
-                      >
-                        {modalType === 'add' ? 'Tambah' : 'Simpan'}
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
-            </form>
+              <form onSubmit={handleModalSubmit} className="space-y-4">
+                <div>
+                  <label className="block mb-1">Nama Vaksin</label>
+                  <input
+                    name="nama_vaksin"
+                    defaultValue={selectedVaksin?.nama_vaksin || ''}
+                    required
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Jenis</label>
+                  <input
+                    name="jenis"
+                    defaultValue={selectedVaksin?.jenis || ''}
+                    placeholder="Contoh: Injeksi, Tetes, dll"
+                    required
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Stok</label>
+                  <input
+                    name="stok"
+                    type="number"
+                    min={0}
+                    defaultValue={selectedVaksin?.stok || ''}
+                    required
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Harga per Unit</label>
+                  <input
+                    name="harga_per_unit"
+                    type="number"
+                    min={0}
+                    defaultValue={selectedVaksin?.harga_per_unit || ''}
+                    required
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Satuan</label>
+                  <input
+                    name="satuan"
+                    defaultValue={selectedVaksin?.satuan || ''}
+                    placeholder="Contoh: Vial, Ampul, Dosis"
+                    required
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleModalClose}
+                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800"
+                  >
+                    {modalType === 'add' ? 'Tambah' : 'Simpan'}
+                  </button>
+                </div>
+              </form>
             )}
           </div>
         </div>
@@ -323,4 +297,4 @@ function Obat() {
   );
 }
 
-export default Obat;
+export default Vaksin;

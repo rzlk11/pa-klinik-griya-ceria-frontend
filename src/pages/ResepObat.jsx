@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import Select from 'react-select';
+import TableFilter from '../components/TableFilter';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -29,6 +31,8 @@ function ResepObat() {
   const [modalType, setModalType] = useState('add');
   const [selectedResep, setSelectedResep] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [filters, setFilters] = useState({ startDate: '', endDate: '', idPasien: '' });
+  const [pasienList, setPasienList] = useState([]);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -40,6 +44,9 @@ function ResepObat() {
 
       const rmResponse = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true });
       setRekamMedisList(rmResponse.data);
+
+      const pasienRes = await axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true });
+      setPasienList(pasienRes.data);
     } catch (error) { console.error(error); }
   };
 
@@ -69,7 +76,22 @@ function ResepObat() {
 
   const columns = useMemo(() => [
     { name: 'ID Resep', selector: row => row.id_resep, sortable: true, width: '90px' },
-    { name: 'ID Rekam Medis', selector: row => row.id_rekam_medis, sortable: true, width: '140px' },
+    { name: 'Pasien & RM', cell: row => {
+        if (!row.rekam_medis_detail) return <span className="text-gray-400">Data tidak tersedia</span>;
+        const rm = row.rekam_medis_detail;
+        const pasien = rm.pasien;
+        return (
+          <div className="py-2">
+            <div className="font-semibold text-green-800">{pasien ? pasien.name : 'Pasien tidak diketahui'}</div>
+            <div className="text-xs text-gray-500 mt-1">RM ID: {rm.id_rekam_medis} | Diagnosa: {rm.diagnosa || '-'}</div>
+          </div>
+        );
+      }, sortable: true, sortFunction: (a, b) => {
+          const nameA = a.rekam_medis_detail?.pasien?.name || '';
+          const nameB = b.rekam_medis_detail?.pasien?.name || '';
+          return nameA.localeCompare(nameB);
+      }, width: '250px' 
+    },
     { name: 'Tanggal', selector: row => row.tanggal_resep, sortable: true },
     { name: 'Status', selector: row => row.status_resep, sortable: true, cell: row => (
         <span className={row.status_resep === 'Aktif' ? 'text-green-700 font-semibold' : row.status_resep === 'Selesai' ? 'text-blue-700 font-semibold' : 'text-red-700 font-semibold'}>
@@ -81,7 +103,7 @@ function ResepObat() {
           {row.details.map((detail) => (<li key={detail.id_detail_resep}>{detail.obat?.nama_obat || 'Obat tidak diketahui'} ({detail.dosis}) - {detail.jumlah_obat} {detail.obat?.satuan || ''}</li>))}
         </ul>
       ), wrap: true },
-    { name: 'Aksi', cell: (row) => (
+    { name: 'Aksi', width: '250px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-green-600 hover:underline font-semibold" onClick={() => navigate(`/resep-obat/${row.id_resep}/detail`)}>Kelola Obat</button>
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
@@ -91,15 +113,27 @@ function ResepObat() {
   ], [navigate]);
 
   const filteredData = useMemo(() => {
-    if (!searchText) return resepList;
-    const lower = searchText.toLowerCase();
-    return resepList.filter(r =>
-      (r.status_resep && r.status_resep.toLowerCase().includes(lower)) ||
-      (r.tanggal_resep && r.tanggal_resep.toLowerCase().includes(lower)) ||
-      String(r.id_resep).includes(lower) ||
-      String(r.id_rekam_medis).includes(lower)
-    );
-  }, [resepList, searchText]);
+    let result = resepList;
+
+    if (filters.startDate && filters.endDate) {
+      result = result.filter(r => r.tanggal_resep >= filters.startDate && r.tanggal_resep <= filters.endDate);
+    }
+    if (filters.idPasien) {
+      result = result.filter(r => r.rekam_medis_detail?.id_pasien === filters.idPasien);
+    }
+
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(r =>
+        (r.tanggal_resep && r.tanggal_resep.toLowerCase().includes(lower)) ||
+        (r.status_resep && r.status_resep.toLowerCase().includes(lower)) ||
+        (r.rekam_medis_detail?.pasien?.name && r.rekam_medis_detail.pasien.name.toLowerCase().includes(lower)) ||
+        (r.rekam_medis_detail?.diagnosa && r.rekam_medis_detail.diagnosa.toLowerCase().includes(lower)) ||
+        String(r.id_rekam_medis).includes(lower)
+      );
+    }
+    return result;
+  }, [resepList, searchText, filters]);
 
   return (
     <div>
@@ -124,7 +158,14 @@ function ResepObat() {
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow">
+
+      <TableFilter 
+        onFilterChange={setFilters} 
+        pasienList={pasienList} 
+        showPasien={true} 
+      />
+
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
           noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data resep.</div>}
@@ -150,36 +191,52 @@ function ResepObat() {
               </form>
             ) : (
               <form onSubmit={handleModalSubmit} className="space-y-4">
-                <div>
-                  <label className="block mb-1">Rekam Medis</label>
-                  <select name="id_rekam_medis" defaultValue={selectedResep?.id_rekam_medis || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="">-- Pilih Rekam Medis --</option>
-                    {rekamMedisList.map(rm => (
-                      <option key={rm.id_rekam_medis} value={rm.id_rekam_medis}>
-                        ID: {rm.id_rekam_medis} - Pasien: {rm.pasien?.name || 'Tidak diketahui'} (Diagnosa: {rm.diagnosa || '-'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1">Tanggal Resep</label>
-                  <input name="tanggal_resep" type="date" defaultValue={selectedResep?.tanggal_resep || ''} required className="w-full border px-3 py-2 rounded" />
-                </div>
-                <div>
-                  <label className="block mb-1">Status Resep</label>
-                  <select name="status_resep" defaultValue={selectedResep?.status_resep || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="">Pilih</option>
-                    <option value="Aktif">Aktif</option>
-                    <option value="Selesai">Selesai</option>
-                    <option value="Dibatalkan">Dibatalkan</option>
-                  </select>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
-                  <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
-                    {modalType === 'add' ? 'Tambah' : 'Simpan'}
-                  </button>
-                </div>
+                {(() => {
+                  const rekamMedisOptions = rekamMedisList.map(rm => ({
+                    value: rm.id_rekam_medis,
+                    label: `ID: ${rm.id_rekam_medis} - Pasien: ${rm.pasien?.name || 'Tidak diketahui'} (Diagnosa: ${rm.diagnosa || '-'})`
+                  }));
+                  const statusOptions = [
+                    { value: 'Aktif', label: 'Aktif' },
+                    { value: 'Selesai', label: 'Selesai' },
+                    { value: 'Dibatalkan', label: 'Dibatalkan' }
+                  ];
+
+                  return (
+                    <>
+                      <div>
+                        <label className="block mb-1">Rekam Medis</label>
+                        <Select
+                          name="id_rekam_medis"
+                          options={rekamMedisOptions}
+                          defaultValue={rekamMedisOptions.find(o => o.value === selectedResep?.id_rekam_medis) || null}
+                          isClearable
+                          placeholder="-- Pilih Rekam Medis --"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Tanggal Resep</label>
+                        <input name="tanggal_resep" type="date" defaultValue={selectedResep?.tanggal_resep || ''} required className="w-full border px-3 py-2 rounded" />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Status Resep</label>
+                        <Select
+                          name="status_resep"
+                          options={statusOptions}
+                          defaultValue={statusOptions.find(o => o.value === selectedResep?.status_resep) || null}
+                          isClearable
+                          placeholder="Pilih Status"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
+                        <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
+                          {modalType === 'add' ? 'Tambah' : 'Simpan'}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </form>
             )}
           </div>

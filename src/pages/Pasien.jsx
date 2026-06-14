@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import Select from 'react-select';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -166,7 +167,7 @@ const columns = useMemo(() => [
   { name: 'Nama Orang Tua', selector: row => row.nama_orang_tua || '-', sortable: true },
   { name: 'No. Telp Ortu', selector: row => row.no_telp_orang_tua || '-', sortable: true },
   {
-    name: 'Aksi', cell: (row) => (
+    name: 'Aksi', width: '180px', cell: (row) => (
       <div className="flex gap-2">
         <button className="text-green-600 hover:underline font-semibold" onClick={() => navigate(`/pasien/${row.uuid}`)}>Detail</button>
         <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
@@ -211,8 +212,8 @@ return (
         </button>
       </div>
     </div>
-    <div className="bg-white rounded-lg shadow">
-      <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
+    <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
         paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
         noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data pasien.</div>}
         customStyles={customStyles} highlightOnHover striped />
@@ -237,40 +238,53 @@ return (
             </form>
           ) : (
             <form onSubmit={handleModalSubmit} className="space-y-4">
-              <div>
-                <label className="block mb-1">No. Register</label>
-                <input name="no_register" value={generatedNoReg} onChange={handleNoRegChange} placeholder="Otomatis" className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block mb-1">Nama Pasien</label>
-                <input name="name" defaultValue={selectedPasien?.name || ''} onChange={handleNameChange} required className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block mb-1">Tanggal Lahir</label>
-                <input name="date_of_birth" type="date" defaultValue={selectedPasien?.date_of_birth || ''} required className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block mb-1">Jenis Kelamin</label>
-                <select name="gender" defaultValue={selectedPasien?.gender || ''} required className="w-full border px-3 py-2 rounded">
-                  <option value="">Pilih</option>
-                  <option value="L">Laki-laki</option>
-                  <option value="P">Perempuan</option>
-                </select>
-              </div>
-              <div>
-                <label className="block mb-1">Nama Orang Tua</label>
-                <input name="nama_orang_tua" defaultValue={selectedPasien?.nama_orang_tua || ''} required className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block mb-1">No. Telp Orang Tua</label>
-                <input name="no_telp_orang_tua" defaultValue={selectedPasien?.no_telp_orang_tua || ''} required className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
-                <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
-                  {modalType === 'add' ? 'Tambah' : 'Simpan'}
-                </button>
-              </div>
+              {(() => {
+                const genderOptions = [
+                  { value: 'L', label: 'Laki-laki' },
+                  { value: 'P', label: 'Perempuan' }
+                ];
+                
+                return (
+                  <>
+                    <div>
+                      <label className="block mb-1">No. Register</label>
+                      <input name="no_register" value={generatedNoReg} onChange={handleNoRegChange} placeholder="Otomatis" className="w-full border px-3 py-2 rounded" />
+                    </div>
+                    <div>
+                      <label className="block mb-1">Nama Pasien</label>
+                      <input name="name" defaultValue={selectedPasien?.name || ''} onChange={handleNameChange} required className="w-full border px-3 py-2 rounded" />
+                    </div>
+                    <div>
+                      <label className="block mb-1">Tanggal Lahir</label>
+                      <input name="date_of_birth" type="date" defaultValue={selectedPasien?.date_of_birth || ''} required className="w-full border px-3 py-2 rounded" />
+                    </div>
+                    <div>
+                      <label className="block mb-1">Jenis Kelamin</label>
+                      <Select
+                        name="gender"
+                        options={genderOptions}
+                        defaultValue={genderOptions.find(o => o.value === selectedPasien?.gender) || null}
+                        isClearable
+                        placeholder="Pilih Jenis Kelamin"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1">Nama Orang Tua</label>
+                      <input name="nama_orang_tua" defaultValue={selectedPasien?.nama_orang_tua || ''} required className="w-full border px-3 py-2 rounded" />
+                    </div>
+                    <div>
+                      <label className="block mb-1">No. Telp Orang Tua</label>
+                      <input name="no_telp_orang_tua" defaultValue={selectedPasien?.no_telp_orang_tua || ''} required className="w-full border px-3 py-2 rounded" />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
+                      <button type="submit" className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800">
+                        {modalType === 'add' ? 'Tambah' : 'Simpan'}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </form>
           )}
         </div>
