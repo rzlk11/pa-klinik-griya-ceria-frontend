@@ -96,7 +96,7 @@ function KelolaDetailResep() {
           dosis: isPuyer ? `${dosisPuyer}mg (Puyer)` : form.dosis.value,
           jumlah_obat: Number(form.jumlah_obat.value),
           aturan_pakai: form.aturan_pakai.value,
-          catatan_dokter: form.catatan_dokter.value
+          catatan_terapis: form.catatan_terapis.value
         };
 
         if (modalType === 'add') {
@@ -115,7 +115,7 @@ function KelolaDetailResep() {
     { name: 'Dosis', selector: row => row.dosis, sortable: true },
     { name: 'Jumlah', selector: row => row.jumlah_obat, sortable: true, cell: row => `${row.jumlah_obat} ${row.obat?.satuan || ''}` },
     { name: 'Aturan Pakai', selector: row => row.aturan_pakai, sortable: true, wrap: true },
-    { name: 'Catatan Dokter', selector: row => row.catatan_dokter || '-', wrap: true },
+    { name: 'Catatan Dokter', selector: row => row.catatan_terapis || '-', wrap: true },
     { name: 'Aksi', width: '180px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
@@ -257,7 +257,7 @@ function KelolaDetailResep() {
                 </div>
                 <div>
                   <label className="block mb-1">Catatan Dokter</label>
-                  <textarea name="catatan_dokter" placeholder="Opsional" defaultValue={selectedDetail?.catatan_dokter || ''} className="w-full border px-3 py-2 rounded" />
+                  <textarea name="catatan_terapis" placeholder="Opsional" defaultValue={selectedDetail?.catatan_terapis || ''} className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>

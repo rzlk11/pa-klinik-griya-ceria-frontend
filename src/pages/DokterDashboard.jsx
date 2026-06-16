@@ -36,10 +36,10 @@ function DokterDashboard() {
   const handleLogout = async () => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/logout`, { withCredentials: true });
-      localStorage.removeItem('role');
-      navigate('/');
     } catch (error) {
       console.error("Error logging out", error);
+    } finally {
+      localStorage.removeItem('role');
       navigate('/');
     }
   };
@@ -91,12 +91,12 @@ function DokterDashboard() {
             <i className="fa-solid fa-chevron-down text-xs"></i>
           </button>
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow z-10">
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg border border-gray-200 z-10">
               <button
-                className="w-full text-left px-4 py-2 hover:bg-gray-100"
                 onClick={handleLogout}
+                className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 font-semibold text-sm"
               >
-                Logout
+                <i className="fa-solid fa-sign-out-alt mr-2"></i> Logout
               </button>
             </div>
           )}

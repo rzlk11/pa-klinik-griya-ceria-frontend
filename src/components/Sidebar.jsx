@@ -15,6 +15,7 @@ function Sidebar() {
       { to: '/terapis', icon: <i className="fa-solid fa-user-md"></i>, label: 'Terapis' },
       { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
       { to: '/vaksin', icon: <i className="fa-solid fa-syringe"></i>, label: 'Vaksin' },
+      { to: '/penjualan-langsung', icon: <i className="fa-solid fa-cash-register"></i>, label: 'Kasir Apotek' },
       { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
       { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
       { to: '/rekam-medis', icon: <i className="fa-solid fa-file-medical"></i>, label: 'Rekam Medis' },
@@ -31,7 +32,9 @@ function Sidebar() {
       { to: '/dashboard/apoteker', icon: <i className="fa-solid fa-table-columns"></i>, label: 'Dashboard' },
       { to: '/obat', icon: <i className="fa-solid fa-capsules"></i>, label: 'Obat' },
       { to: '/vaksin', icon: <i className="fa-solid fa-syringe"></i>, label: 'Vaksin' },
+      { to: '/penjualan-langsung', icon: <i className="fa-solid fa-cash-register"></i>, label: 'Kasir Apotek' },
       { to: '/resep-obat', icon: <i className="fa-solid fa-prescription"></i>, label: 'Resep Obat' },
+      { to: '/transaksi', icon: <i className="fa-solid fa-wallet"></i>, label: 'Transaksi' },
     ];
   }
 

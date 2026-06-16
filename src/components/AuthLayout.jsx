@@ -1,8 +1,19 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import doctorImg from '../assets/doctorImg.png';
 
 function AuthLayout() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const role = localStorage.getItem('role');
+    if (role) {
+      if (role === 'dokter') navigate('/dashboard/dokter');
+      else if (role === 'apoteker') navigate('/dashboard/apoteker');
+      else navigate('/dashboard/admin');
+    }
+  }, [navigate]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="flex bg-white shadow-lg rounded-lg overflow-hidden">

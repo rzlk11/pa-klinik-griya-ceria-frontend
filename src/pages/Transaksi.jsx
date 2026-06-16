@@ -3,6 +3,7 @@ import axios from 'axios';
 import DataTable from 'react-data-table-component';
 import Select from 'react-select';
 import TableFilter from '../components/TableFilter';
+import * as XLSX from 'xlsx';
 
 const customStyles = {
   headRow: { style: { backgroundColor: '#f0fdf4', borderBottom: '2px solid #166534' } },
@@ -20,6 +21,8 @@ const getStats = (list) => [
 ];
 
 function Transaksi() {
+  const role = localStorage.getItem('role') || 'admin';
+
   const [transaksiList, setTransaksiList] = useState([]);
   const [pasienList, setPasienList] = useState([]);
   const [pelayananList, setPelayananList] = useState([]);
@@ -139,10 +142,27 @@ function Transaksi() {
         }
       }
       fetchData(); handleModalClose();
+      fetchData(); handleModalClose();
     } catch (error) { console.error(error); }
   };
 
-  const columns = useMemo(() => [
+  const getBiayaObat = (row) => {
+    let biayaObat = 0;
+    if (row.id_resep) {
+      const res = resepList.find(r => r.id_resep === row.id_resep);
+      if (res && res.details) {
+        res.details.forEach(d => {
+          if (d.obat && d.obat.harga_per_unit) {
+            biayaObat += d.jumlah_obat * Number(d.obat.harga_per_unit);
+          }
+        });
+      }
+    }
+    return biayaObat;
+  };
+
+  const columns = useMemo(() => {
+    const cols = [
     { name: 'ID', selector: row => row.id_transaksi, sortable: true, width: '70px' },
     { name: 'Pasien', selector: row => row.pasien?.name || '-', sortable: true },
     { name: 'Terapis', cell: row => {
@@ -155,32 +175,45 @@ function Transaksi() {
         )
       }, sortable: true },
     { name: 'Pelayanan', selector: row => row.pelayanan?.nama_pelayanan || '-', sortable: true },
-    { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '180px', wrap: true, cell: row => {
+    { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '220px', wrap: true, cell: row => {
         if (!row.id_resep) return '-';
         const resepDetail = resepList.find(r => r.id_resep === row.id_resep);
-        const obatText = resepDetail?.details?.length > 0 ? resepDetail.details.map(d => d.obat?.nama_obat).join(', ') : 'Tanpa obat';
         return (
           <div className="py-1">
-            <div className="font-semibold text-green-700">ID: {row.id_resep}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{obatText}</div>
+            <div className="font-semibold text-green-700 mb-1">ID: {row.id_resep}</div>
+            {resepDetail?.details?.length > 0 ? (
+              <ul className="text-xs text-gray-500 list-disc pl-3 space-y-0.5">
+                {resepDetail.details.map((d, i) => (
+                  <li key={i}>{d.obat?.nama_obat} ({d.jumlah_obat}x) - {d.aturan_pakai}</li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-xs text-gray-500">Tanpa obat</div>
+            )}
           </div>
         );
     } },
     { name: 'Tanggal', selector: row => row.tanggal_transaksi, sortable: true },
-    { name: 'Total Biaya', selector: row => row.total_biaya, sortable: true, cell: row => `Rp ${Number(row.total_biaya).toLocaleString('id-ID')}` },
+    { name: role === 'apoteker' ? 'Biaya Obat' : 'Total Biaya', selector: row => role === 'apoteker' ? getBiayaObat(row) : row.total_biaya, sortable: true, cell: row => `Rp ${Number(role === 'apoteker' ? getBiayaObat(row) : row.total_biaya).toLocaleString('id-ID')}` },
     { name: 'Bukti', cell: row => row.bukti_transaksi ? (
         <a href={row.bukti_transaksi} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Lihat Bukti</a>
-      ) : '-' },
-    { name: 'Aksi', width: '180px', cell: (row) => (
-        <div className="flex gap-2">
-          <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
-          <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
-        </div>
-      ), ignoreRowClick: true },
-  ], [resepList]);
+      ) : '-' }
+    ];
+
+    if (role !== 'apoteker') {
+      cols.push({ name: 'Aksi', width: '180px', cell: (row) => (
+          <div className="flex gap-2">
+            <button className="text-blue-600 hover:underline" onClick={() => handleEdit(row)}>Edit</button>
+            <button className="text-red-600 hover:underline" onClick={() => handleDelete(row)}>Hapus</button>
+          </div>
+        ), ignoreRowClick: true });
+    }
+
+    return cols;
+  }, [resepList, role]);
 
   const filteredData = useMemo(() => {
-    let result = transaksiList;
+    let result = role === 'apoteker' ? transaksiList.filter(t => t.id_resep) : transaksiList;
 
     if (filters.startDate && filters.endDate) {
       result = result.filter(t => t.tanggal_transaksi >= filters.startDate && t.tanggal_transaksi <= filters.endDate);
@@ -203,6 +236,37 @@ function Transaksi() {
     return result;
   }, [transaksiList, searchText, filters]);
 
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      alert("Tidak ada data untuk diexport");
+      return;
+    }
+
+    const exportData = filteredData.map((t, index) => {
+      const resepDetail = t.id_resep ? resepList.find(r => r.id_resep === t.id_resep) : null;
+      const obatText = resepDetail?.details?.length > 0 
+        ? resepDetail.details.map(d => `${d.obat?.nama_obat} (${d.jumlah_obat}x) - ${d.aturan_pakai}`).join('\n') 
+        : 'Tanpa obat';
+      
+      return {
+        No: index + 1,
+        'ID Transaksi': t.id_transaksi,
+        Pasien: t.pasien?.name || '-',
+        Terapis: t.terapis?.nama_terapis || '-',
+        Pelayanan: t.pelayanan?.nama_pelayanan || '-',
+        'ID Resep': t.id_resep || '-',
+        Obat: obatText,
+        Tanggal: t.tanggal_transaksi,
+        [role === 'apoteker' ? 'Biaya Obat' : 'Total Biaya']: Number(role === 'apoteker' ? getBiayaObat(t) : t.total_biaya)
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Transaksi");
+    XLSX.writeFile(workbook, `Laporan_Transaksi_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-green-800 mb-8">Transaksi</h1>
@@ -221,9 +285,14 @@ function Transaksi() {
         <div className="flex items-center gap-2">
           <input type="text" placeholder="Search" value={searchText} onChange={(e) => setSearchText(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700" />
-          <button className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900" onClick={handleAdd}>
-            Tambah Transaksi
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 flex items-center gap-2" onClick={handleExportExcel}>
+            <i className="fa-solid fa-file-excel"></i> Export Excel
           </button>
+          {role !== 'apoteker' && (
+            <button className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900" onClick={handleAdd}>
+              Tambah Transaksi
+            </button>
+          )}
         </div>
       </div>
       

@@ -53,7 +53,10 @@ function PemeriksaanPasien() {
   }, [id]);
 
   const handleAddObat = () => {
-    setResepDetails([...resepDetails, { id_obat: '', jumlah_obat: 1, dosis: '' }]);
+    setResepDetails([...resepDetails, { 
+      id_obat: '', jumlah_obat: 1, dosis: '',
+      is_puyer: false, puyer_dosis: '', puyer_kekuatan: '', puyer_permintaan: ''
+    }]);
   };
 
   const handleRemoveObat = (index) => {
@@ -64,7 +67,33 @@ function PemeriksaanPasien() {
 
   const handleChangeObat = (index, field, value) => {
     const newDetails = [...resepDetails];
-    newDetails[index][field] = value;
+    newDetails[index] = { ...newDetails[index], [field]: value };
+    
+    // Auto-fill kekuatan obat when selecting an obat
+    if (field === 'id_obat' && value) {
+      const selectedObat = obatList.find(o => String(o.id_obat) === String(value));
+      if (selectedObat && selectedObat.kekuatan) {
+        const matches = String(selectedObat.kekuatan).match(/\d+(\.\d+)?/);
+        if (matches) {
+          newDetails[index].puyer_kekuatan = Number(matches[0]);
+        } else {
+          newDetails[index].puyer_kekuatan = '';
+        }
+      } else {
+        newDetails[index].puyer_kekuatan = '';
+      }
+    }
+
+    // Auto calculate jumlah_obat if puyer fields are updated
+    if (field === 'puyer_dosis' || field === 'puyer_kekuatan' || field === 'puyer_permintaan' || field === 'id_obat') {
+      const d = Number(newDetails[index].puyer_dosis) || 0;
+      const k = Number(newDetails[index].puyer_kekuatan) || 0;
+      const p = Number(newDetails[index].puyer_permintaan) || 0;
+      if (k > 0) {
+        newDetails[index].jumlah_obat = Math.ceil((d / k) * p);
+      }
+    }
+    
     setResepDetails(newDetails);
   };
 
@@ -75,6 +104,7 @@ function PemeriksaanPasien() {
         id_pasien: antrian.id_pasien,
         id_terapis: antrian.id_terapis,
         id_pelayanan: selectedPelayananId || null,
+        id_antrian: antrian.id_antrian,
         diagnosa,
         tindakan,
         catatan,
@@ -102,18 +132,53 @@ function PemeriksaanPasien() {
               id_resep: idResep,
               id_obat: detail.id_obat,
               jumlah_obat: detail.jumlah_obat,
-              dosis: detail.dosis || '-',
-              aturan_pakai: detail.dosis || '-'
+              dosis: detail.is_puyer ? (detail.puyer_dosis ? `${detail.puyer_dosis} mg/bks` : '-') : '-',
+              aturan_pakai: detail.dosis || '-',
+              catatan_terapis: detail.is_puyer ? `Mohon racik menjadi PUYER sebanyak ${detail.puyer_permintaan} bungkus.` : null
             }, { withCredentials: true });
           }
         }
       }
 
-      // 4. Update Status Antrian
-      const newStatus = resepDetails.length > 0 ? 'Menunggu Obat' : 'Selesai Periksa';
-      await axios.patch(`${import.meta.env.VITE_API_URL}/antrian/${id}`, {
-        status_antrian: newStatus
-      }, { withCredentials: true });
+      // 4. Update Status Antrian & Buat Transaksi jika tanpa resep
+      if (resepDetails.length === 0) {
+        // Karena hanya konsultasi, antrian langsung selesai dan buat transaksi
+        let biayaPelayanan = 0;
+        if (selectedPelayananId) {
+          const pel = pelayananList.find(p => p.id_pelayanan === selectedPelayananId);
+          if (pel) biayaPelayanan = Number(pel.harga) || 0;
+        }
+
+        const trxData = {
+          id_pasien: antrian.id_pasien,
+          id_pelayanan: selectedPelayananId || '',
+          id_terapis: antrian.id_terapis || '',
+          id_antrian: antrian.id_antrian,
+          tanggal_transaksi: antrian.tanggal_antrian || new Date().toISOString().split('T')[0],
+          total_biaya: biayaPelayanan
+        };
+
+        const formData = new FormData();
+        Object.keys(trxData).forEach(key => {
+          if (trxData[key] !== null && trxData[key] !== undefined && trxData[key] !== '') {
+            formData.append(key, trxData[key]);
+          }
+        });
+
+        await axios.post(`${import.meta.env.VITE_API_URL}/transaksi`, formData, { 
+          headers: { 'Content-Type': 'multipart/form-data' },
+          withCredentials: true 
+        });
+
+        await axios.patch(`${import.meta.env.VITE_API_URL}/antrian/${id}`, {
+          status_antrian: 'Selesai'
+        }, { withCredentials: true });
+      } else {
+        // Ada resep, maka lanjut ke Apoteker
+        await axios.patch(`${import.meta.env.VITE_API_URL}/antrian/${id}`, {
+          status_antrian: 'Menunggu Obat'
+        }, { withCredentials: true });
+      }
 
       alert('Pemeriksaan selesai!');
       navigate('/dashboard/dokter');
@@ -182,6 +247,7 @@ function PemeriksaanPasien() {
                   value={pelayananList.map(p => ({ value: p.id_pelayanan, label: p.nama_pelayanan })).find(o => o.value === selectedPelayananId) || null}
                   onChange={(opt) => setSelectedPelayananId(opt ? opt.value : '')}
                   isClearable placeholder="-- Pilih Pelayanan --"
+                  styles={{ control: (base) => ({ ...base, minHeight: '38px', borderRadius: '0.375rem', borderColor: '#d1d5db' }) }}
                 />
               </div>
               <div>
@@ -214,29 +280,71 @@ function PemeriksaanPasien() {
             ) : (
               <div className="space-y-4">
                 {resepDetails.map((detail, index) => (
-                  <div key={index} className="flex flex-wrap md:flex-nowrap gap-3 items-end p-4 border border-blue-100 bg-blue-50/30 rounded">
-                    <div className="w-full md:w-5/12">
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Obat</label>
-                      <Select
-                        options={obatList.map(o => ({ value: o.id_obat, label: o.nama_obat }))}
-                        value={obatList.map(o => ({ value: o.id_obat, label: o.nama_obat })).find(opt => opt.value === detail.id_obat) || null}
-                        onChange={(opt) => handleChangeObat(index, 'id_obat', opt ? opt.value : '')}
-                        isClearable placeholder="Cari obat..."
+                  <div key={index} className="flex flex-col gap-3 p-4 border border-blue-100 bg-blue-50/30 rounded">
+                    
+                    {/* Row 1: Main Drug Inputs */}
+                    <div className="flex flex-wrap md:flex-nowrap gap-3 items-end">
+                      <div className="w-full md:w-4/12">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Obat</label>
+                        <Select
+                          options={obatList.map(o => ({ value: o.id_obat, label: o.kekuatan ? `${o.nama_obat} (${o.kekuatan})` : o.nama_obat }))}
+                          value={obatList.map(o => ({ value: o.id_obat, label: o.kekuatan ? `${o.nama_obat} (${o.kekuatan})` : o.nama_obat })).find(opt => opt.value === detail.id_obat) || null}
+                          onChange={(opt) => handleChangeObat(index, 'id_obat', opt ? opt.value : '')}
+                          isClearable placeholder="Cari obat..."
+                          styles={{ control: (base) => ({ ...base, minHeight: '38px', borderRadius: '0.375rem', borderColor: '#d1d5db' }) }}
+                        />
+                      </div>
+                      <div className="w-full md:w-2/12">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Total {detail.is_puyer ? 'Tablet Digerus' : 'Jumlah'}</label>
+                        <input type="number" min="1" value={detail.jumlah_obat} 
+                          onChange={e => handleChangeObat(index, 'jumlah_obat', parseInt(e.target.value))} 
+                          className={`w-full border rounded px-3 py-[7px] text-sm focus:outline-none focus:border-blue-500 ${detail.is_puyer ? 'bg-gray-100 border-gray-300 cursor-not-allowed' : 'border-gray-300'}`} 
+                          readOnly={detail.is_puyer}
+                        />
+                      </div>
+                      <div className="w-full md:w-4/12">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Aturan Pakai / Instruksi</label>
+                        <input type="text" value={detail.dosis} onChange={e => handleChangeObat(index, 'dosis', e.target.value)} placeholder={detail.is_puyer ? "Cth: Dijadikan 10 bungkus puyer" : "Contoh: 3x1 Sesudah makan"} className="w-full border border-gray-300 rounded px-3 py-[7px] text-sm focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="w-full md:w-1/12 text-right md:text-left pt-2 md:pt-0">
+                        <label className="hidden md:block text-xs font-semibold text-transparent mb-1">Aksi</label>
+                        <button type="button" onClick={() => handleRemoveObat(index)} className="text-red-500 hover:bg-red-50 px-3 py-1.5 rounded border border-red-200 w-full md:w-auto">
+                          <i className="fa-solid fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Racik Puyer Toggle */}
+                    <div className="flex items-center gap-2 mt-1 border-t border-blue-100 pt-2">
+                      <input 
+                        type="checkbox" 
+                        id={`puyer-${index}`} 
+                        checked={detail.is_puyer} 
+                        onChange={e => handleChangeObat(index, 'is_puyer', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
+                      <label htmlFor={`puyer-${index}`} className="text-sm font-semibold text-yellow-700 cursor-pointer">
+                        Obat ini diracik menjadi puyer
+                      </label>
                     </div>
-                    <div className="w-full md:w-2/12">
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Jumlah</label>
-                      <input type="number" min="1" value={detail.jumlah_obat} onChange={e => handleChangeObat(index, 'jumlah_obat', parseInt(e.target.value))} className="w-full border border-gray-300 rounded px-3 py-[7px] text-sm focus:outline-none focus:border-blue-500" />
-                    </div>
-                    <div className="w-full md:w-4/12">
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Aturan Pakai / Dosis</label>
-                      <input type="text" value={detail.dosis} onChange={e => handleChangeObat(index, 'dosis', e.target.value)} placeholder="Contoh: 3x1 Sesudah makan" className="w-full border border-gray-300 rounded px-3 py-[7px] text-sm focus:outline-none focus:border-blue-500" />
-                    </div>
-                    <div className="w-full md:w-1/12 text-right">
-                      <button type="button" onClick={() => handleRemoveObat(index)} className="text-red-500 hover:bg-red-50 p-2 rounded mb-0.5">
-                        <i className="fa-solid fa-trash"></i>
-                      </button>
-                    </div>
+
+                    {/* Row 3: Puyer Inputs */}
+                    {detail.is_puyer && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-yellow-50 p-3 rounded border border-yellow-200 mt-1">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Dosis per Bungkus (mg)</label>
+                          <input type="number" min="0" value={detail.puyer_dosis} onChange={e => handleChangeObat(index, 'puyer_dosis', e.target.value)} className="w-full border border-yellow-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-yellow-500 bg-white" placeholder="Cth: 250" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Kekuatan Obat (mg/tab)</label>
+                          <input type="number" min="0" value={detail.puyer_kekuatan} onChange={e => handleChangeObat(index, 'puyer_kekuatan', e.target.value)} className="w-full border border-yellow-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-yellow-500 bg-white" placeholder="Cth: 500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Permintaan (Bungkus)</label>
+                          <input type="number" min="0" value={detail.puyer_permintaan} onChange={e => handleChangeObat(index, 'puyer_permintaan', e.target.value)} className="w-full border border-yellow-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-yellow-500 bg-white" placeholder="Cth: 10" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

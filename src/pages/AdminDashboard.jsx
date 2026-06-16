@@ -42,7 +42,7 @@ const barOptions = {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [showAdminDropdown, setShowAdminDropdown] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const [pasienCount, setPasienCount] = useState(0);
   const [terapisCount, setTerapisCount] = useState(0);
@@ -109,9 +109,10 @@ function Dashboard() {
   const handleLogout = async () => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/logout`, { withCredentials: true });
-      navigate('/');
     } catch (error) {
       console.error("Error logging out", error);
+    } finally {
+      localStorage.removeItem('role');
       navigate('/');
     }
   };
@@ -157,22 +158,22 @@ function Dashboard() {
         <div className="relative">
         <button
           className="flex items-center gap-2 px-4 py-2 rounded hover:bg-gray-100 font-semibold text-green-800"
-          onClick={() => setShowAdminDropdown((prev) => !prev)}
+          onClick={() => setShowDropdown((prev) => !prev)}
         >
           <i className="fa-solid fa-circle-user text-xl text-black"></i>
           <span className="text-sm">Admin</span>
           <i className="fa-solid fa-chevron-down text-xs"></i>
         </button>
-        {showAdminDropdown && (
-          <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow z-10">
-            <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-100"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          </div>
-        )}
+        {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg border border-gray-200 z-10">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 font-semibold text-sm"
+                >
+                  <i className="fa-solid fa-sign-out-alt mr-2"></i> Logout
+                </button>
+              </div>
+            )}
       </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

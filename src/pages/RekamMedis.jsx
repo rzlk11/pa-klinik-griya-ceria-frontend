@@ -194,24 +194,33 @@ function RekamMedis() {
               <form onSubmit={handleModalSubmit} className="space-y-4">
                 <div>
                   <label className="block mb-1">Pasien</label>
-                  <select name="id_pasien" defaultValue={selectedRekamMedis?.id_pasien || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="" disabled>Pilih Pasien</option>
-                    {pasienList.map(p => <option key={p.id_pasien || p.id} value={p.id_pasien || p.id}>{p.name}</option>)}
-                  </select>
+                  <Select 
+                    name="id_pasien" 
+                    options={pasienList.map(p => ({ value: p.id_pasien || p.id, label: p.name }))}
+                    defaultValue={pasienList.map(p => ({ value: p.id_pasien || p.id, label: p.name })).find(o => o.value === selectedRekamMedis?.id_pasien) || null}
+                    placeholder="Pilih Pasien"
+                    isClearable
+                  />
                 </div>
                 <div>
                   <label className="block mb-1">Terapis</label>
-                  <select name="id_terapis" defaultValue={selectedRekamMedis?.id_terapis || ''} className="w-full border px-3 py-2 rounded">
-                    <option value="">Pilih Terapis (Opsional)</option>
-                    {terapisList.map(t => <option key={t.id_terapis || t.id} value={t.id_terapis || t.id}>{t.nama_terapis}</option>)}
-                  </select>
+                  <Select 
+                    name="id_terapis" 
+                    options={terapisList.map(t => ({ value: t.id_terapis || t.id, label: t.nama_terapis }))}
+                    defaultValue={terapisList.map(t => ({ value: t.id_terapis || t.id, label: t.nama_terapis })).find(o => o.value === selectedRekamMedis?.id_terapis) || null}
+                    placeholder="Pilih Terapis (Opsional)"
+                    isClearable
+                  />
                 </div>
                 <div>
                   <label className="block mb-1">Pelayanan</label>
-                  <select name="id_pelayanan" defaultValue={selectedRekamMedis?.id_pelayanan || ''} required className="w-full border px-3 py-2 rounded">
-                    <option value="" disabled>Pilih Pelayanan</option>
-                    {pelayananList.map(p => <option key={p.id_pelayanan || p.id} value={p.id_pelayanan || p.id}>{p.nama_pelayanan}</option>)}
-                  </select>
+                  <Select 
+                    name="id_pelayanan" 
+                    options={pelayananList.map(p => ({ value: p.id_pelayanan || p.id, label: p.nama_pelayanan }))}
+                    defaultValue={pelayananList.map(p => ({ value: p.id_pelayanan || p.id, label: p.nama_pelayanan })).find(o => o.value === selectedRekamMedis?.id_pelayanan) || null}
+                    placeholder="Pilih Pelayanan"
+                    isClearable
+                  />
                 </div>
                 <div>
                   <label className="block mb-1">Diagnosa</label>
