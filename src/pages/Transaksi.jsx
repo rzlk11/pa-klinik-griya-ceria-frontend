@@ -175,20 +175,24 @@ function Transaksi() {
         )
       }, sortable: true },
     { name: 'Pelayanan', selector: row => row.pelayanan?.nama_pelayanan || '-', sortable: true },
-    { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '220px', wrap: true, cell: row => {
+    { name: 'Resep', selector: row => row.resep?.id_resep || '-', sortable: true, width: '250px', wrap: true, cell: row => {
         if (!row.id_resep) return '-';
         const resepDetail = resepList.find(r => r.id_resep === row.id_resep);
         return (
-          <div className="py-1">
+          <div className="py-2">
             <div className="font-semibold text-green-700 mb-1">ID: {row.id_resep}</div>
-            {resepDetail?.details?.length > 0 ? (
-              <ul className="text-xs text-gray-500 list-disc pl-3 space-y-0.5">
+            {resepDetail?.resep_teks && resepDetail.resep_teks.trim() !== '' ? (
+              <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 p-1.5 rounded font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                {resepDetail.resep_teks}
+              </div>
+            ) : resepDetail?.details?.length > 0 ? (
+              <ul className="text-xs text-gray-500 list-disc pl-3 space-y-0.5 max-h-24 overflow-y-auto">
                 {resepDetail.details.map((d, i) => (
                   <li key={i}>{d.obat?.nama_obat} ({d.jumlah_obat}x) - {d.aturan_pakai}</li>
                 ))}
               </ul>
             ) : (
-              <div className="text-xs text-gray-500">Tanpa obat</div>
+              <div className="text-xs text-gray-500 italic">Tanpa obat</div>
             )}
           </div>
         );
@@ -244,9 +248,12 @@ function Transaksi() {
 
     const exportData = filteredData.map((t, index) => {
       const resepDetail = t.id_resep ? resepList.find(r => r.id_resep === t.id_resep) : null;
-      const obatText = resepDetail?.details?.length > 0 
-        ? resepDetail.details.map(d => `${d.obat?.nama_obat} (${d.jumlah_obat}x) - ${d.aturan_pakai}`).join('\n') 
-        : 'Tanpa obat';
+      let obatText = 'Tanpa obat';
+      if (resepDetail?.resep_teks) {
+        obatText = resepDetail.resep_teks;
+      } else if (resepDetail?.details?.length > 0) {
+        obatText = resepDetail.details.map(d => `${d.obat?.nama_obat} (${d.jumlah_obat}x) - ${d.aturan_pakai}`).join('\n');
+      }
       
       return {
         No: index + 1,
@@ -341,7 +348,9 @@ function Transaksi() {
                       return rm && rm.id_pasien === Number(selectedPasienId);
                     })
                     .map(r => {
-                      const obatText = r.details?.length > 0 ? r.details.map(d => d.obat?.nama_obat).join(', ') : 'Tanpa obat';
+                      let obatText = 'Tanpa obat';
+                      if (r.resep_teks) obatText = 'Resep Teks';
+                      else if (r.details?.length > 0) obatText = r.details.map(d => d.obat?.nama_obat).join(', ');
                       const rm = rekamMedisList.find(rm => rm.id_rekam_medis === r.id_rekam_medis);
                       const namaPasien = rm?.pasien?.name || 'Pasien tidak diketahui';
                       return {
