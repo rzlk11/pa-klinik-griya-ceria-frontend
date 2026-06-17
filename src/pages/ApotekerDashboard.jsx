@@ -7,22 +7,22 @@ function ApotekerDashboard() {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const [obatCount, setObatCount] = useState(0);
-  const [resepCount, setResepCount] = useState(0);
   const [antrianList, setAntrianList] = useState([]);
   const [resepList, setResepList] = useState([]);
+
+  // Modal State
+  const [showSelesaikanModal, setShowSelesaikanModal] = useState(false);
+  const [selectedAntrianSelesai, setSelectedAntrianSelesai] = useState(null);
+  const [inputHarga, setInputHarga] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [obatRes, resepRes, antrianRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/obat`, { withCredentials: true }),
+        const [resepRes, antrianRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true }),
           axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true }),
         ]);
 
-        setObatCount(obatRes.data.length);
-        setResepCount(resepRes.data.length);
         setResepList(resepRes.data);
         setAntrianList(antrianRes.data.filter(a => a.status_antrian === 'Menunggu Obat'));
       } catch (error) {
@@ -32,8 +32,40 @@ function ApotekerDashboard() {
     fetchData();
   }, []);
 
-  const handleSelesaikanAntrian = async (row) => {
+  const openSelesaikanModal = (row) => {
+    setSelectedAntrianSelesai(row);
+    
+    const resep = [...resepList]
+      .filter(r => r.rekam_medis_detail?.id_pasien == row.id_pasien)
+      .sort((a, b) => b.id_resep - a.id_resep)[0];
+      
+    let totalHarga = 0;
+    if (resep && resep.details && resep.details.length > 0) {
+      totalHarga = resep.details.reduce((sum, d) => {
+        const qty = Number(d.jumlah_obat) || 0;
+        const harga = Number(d.obat?.harga_per_unit) || 0;
+        return sum + (qty * harga);
+      }, 0);
+    }
+
+    setInputHarga(totalHarga > 0 ? totalHarga.toLocaleString('id-ID') : '');
+    setShowSelesaikanModal(true);
+  };
+
+  const closeSelesaikanModal = () => {
+    setShowSelesaikanModal(false);
+    setSelectedAntrianSelesai(null);
+    setInputHarga('');
+  };
+
+  const handleSelesaikanAntrian = async (e) => {
+    e.preventDefault();
+    if (!selectedAntrianSelesai) return;
+
     try {
+      const row = selectedAntrianSelesai;
+      const biayaObatManual = Number(inputHarga.replace(/\./g, '')) || 0;
+
       await axios.patch(`${import.meta.env.VITE_API_URL}/antrian/${row.id_antrian}`, {
         status_antrian: 'Selesai'
       }, { withCredentials: true });
@@ -48,13 +80,6 @@ function ApotekerDashboard() {
            const rmRes = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis/${idRekamMedis}`, { withCredentials: true });
            const rmData = rmRes.data;
 
-           let biayaObat = 0;
-           if (resep.details) {
-             resep.details.forEach(d => {
-               biayaObat += Number(d.jumlah_obat) * Number(d.obat?.harga_per_unit || 0);
-             });
-           }
-
            let biayaPelayanan = 0;
            if (rmData.pelayanan) {
               biayaPelayanan = Number(rmData.pelayanan.harga || 0);
@@ -67,7 +92,7 @@ function ApotekerDashboard() {
              id_terapis: row.id_terapis || '',
              id_antrian: row.id_antrian,
              tanggal_transaksi: row.tanggal_antrian,
-             total_biaya: biayaObat + biayaPelayanan
+             total_biaya: biayaObatManual + biayaPelayanan
            };
            
            const formData = new FormData();
@@ -87,6 +112,7 @@ function ApotekerDashboard() {
       }
 
       setAntrianList(prev => prev.filter(a => a.id_antrian !== row.id_antrian));
+      closeSelesaikanModal();
       alert('Antrian pasien selesai dan Transaksi otomatis dibuat!');
     } catch (error) {
       console.error(error);
@@ -94,19 +120,6 @@ function ApotekerDashboard() {
     }
   };
 
-  const handleLihatResep = (row) => {
-    // Cari resep terbaru untuk id_pasien tersebut tanpa membandingkan tanggal (menghindari isu zona waktu)
-    const resep = [...resepList]
-      .filter(r => r.rekam_medis_detail?.id_pasien == row.id_pasien)
-      .sort((a, b) => b.id_resep - a.id_resep)[0];
-
-    if (resep) {
-      navigate(`/resep-obat/${resep.id_resep}/detail`);
-    } else {
-      alert('Data resep untuk pasien ini belum ditemukan atau belum disinkronisasi.');
-      navigate('/resep-obat');
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -119,10 +132,6 @@ function ApotekerDashboard() {
     }
   };
 
-  const stats = [
-    { label: 'Total Resep Obat', value: resepCount, icon: <i className="fa-solid fa-prescription"></i> },
-    { label: 'Menunggu Obat', value: antrianList.length, icon: <i className="fa-solid fa-clock text-orange-500"></i> },
-  ];
 
   const columns = [
     { name: 'No', selector: (row, index) => index + 1, width: '60px' },
@@ -133,48 +142,37 @@ function ApotekerDashboard() {
           .filter(r => r.rekam_medis_detail?.id_pasien == row.id_pasien)
           .sort((a, b) => b.id_resep - a.id_resep)[0];
           
-        if (!resep || !resep.details || resep.details.length === 0) {
-           return <span className="text-gray-400 italic">Belum ada resep / data tidak sinkron</span>;
+        let resepContent = null;
+        if (resep) {
+          if (resep.resep_teks) {
+            resepContent = resep.resep_teks;
+          } else if (resep.details && resep.details.length > 0) {
+            resepContent = resep.details.map(d => `${d.obat?.nama_obat || 'Obat Tidak Diketahui'} (${d.jumlah_obat}x) - ${d.aturan_pakai}`).join('\n');
+          }
+        }
+
+        if (!resepContent) {
+           return <span className="text-gray-400 italic">Belum ada resep obat</span>;
         }
 
         return (
-          <div className="py-2 flex flex-col gap-2 w-full">
-            {resep.details.map((d, i) => (
-              <div key={i} className="border border-green-100 bg-green-50 rounded p-2 text-xs w-full">
-                <div className="font-bold text-green-800 text-sm mb-1">{d.obat?.nama_obat || 'Unknown Obat'}</div>
-                <div className="grid grid-cols-2 gap-1 text-gray-700">
-                  <div><span className="text-gray-500">Dosis:</span> {d.dosis || '-'}</div>
-                  <div><span className="text-gray-500">Total:</span> <span className="font-semibold text-blue-700">{d.jumlah_obat} {d.obat?.satuan || ''}</span></div>
-                </div>
-                <div className="mt-1">
-                  <span className="text-gray-500">Aturan Pakai:</span> <span className="font-semibold">{d.aturan_pakai || '-'}</span>
-                </div>
-                {d.catatan_terapis && d.catatan_terapis !== '-' && (
-                  <div className="mt-2 text-red-700 font-semibold bg-red-100 p-1.5 rounded border border-red-200">
-                    <i className="fa-solid fa-triangle-exclamation mr-1"></i> Catatan Dokter: {d.catatan_terapis}
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="py-2 w-full">
+            <div className="border border-green-100 bg-green-50 rounded p-3 text-sm whitespace-pre-wrap font-mono w-full">
+              {resepContent}
+            </div>
           </div>
         );
     }, width: '380px' },
     { name: 'Aksi', cell: row => (
         <div className="flex gap-2">
           <button 
-            className="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 font-semibold text-sm"
-            onClick={() => handleLihatResep(row)}
+            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-semibold shadow flex items-center gap-2"
+            onClick={() => openSelesaikanModal(row)}
           >
-            Buka Hal. Resep
-          </button>
-          <button 
-            className="bg-green-700 text-white px-3 py-1.5 rounded hover:bg-green-800 font-semibold text-sm"
-            onClick={() => handleSelesaikanAntrian(row)}
-          >
-            Selesaikan
+            <i className="fa-solid fa-check-circle"></i> Selesaikan
           </button>
         </div>
-      ), ignoreRowClick: true, width: '250px' }
+      ), ignoreRowClick: true, width: '200px' }
   ];
 
   const customStyles = {
@@ -217,19 +215,6 @@ function ApotekerDashboard() {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded border border-gray-200 p-5 flex flex-col items-start">
-            <div className="text-gray-400 text-sm flex items-center mb-4">
-              <span className="mr-2 text-gray-300 text-lg">{stat.icon}</span>
-              <span className="font-medium">{stat.label}</span>
-            </div>
-            <div className="text-3xl font-bold text-green-800">
-              {stat.value}
-            </div>
-          </div>
-        ))}
-      </div>
 
       <div className="bg-white rounded border border-gray-200 p-6 mb-8">
         <h2 className="text-xl font-bold text-green-800 mb-2">Antrian Menunggu Obat</h2>
@@ -244,6 +229,75 @@ function ApotekerDashboard() {
           />
         </div>
       </div>
+
+      {showSelesaikanModal && (() => {
+        const resep = [...resepList]
+          .filter(r => r.rekam_medis_detail?.id_pasien == selectedAntrianSelesai?.id_pasien)
+          .sort((a, b) => b.id_resep - a.id_resep)[0];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-green-800">
+                  Selesaikan Antrian
+                </h3>
+                <button onClick={closeSelesaikanModal} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+              </div>
+
+              <div className="mb-5">
+                <label className="block mb-2 font-semibold text-gray-700 text-sm">Resep Dokter:</label>
+                <div className="border border-green-100 bg-green-50 rounded p-3 text-sm whitespace-pre-wrap font-mono w-full max-h-40 overflow-y-auto">
+                  {(() => {
+                    if (resep?.resep_teks) return resep.resep_teks;
+                    if (resep?.details && resep.details.length > 0) {
+                      return resep.details.map(d => `${d.obat?.nama_obat || 'Obat Tidak Diketahui'} (${d.jumlah_obat}x) - ${d.aturan_pakai}`).join('\n');
+                    }
+                    return <span className="text-gray-400 italic">Tidak ada resep obat.</span>;
+                  })()}
+                </div>
+              </div>
+
+              <form onSubmit={handleSelesaikanAntrian}>
+                <div className="mb-6">
+                  <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                    Masukkan total harga obat untuk pasien <strong className="text-green-800">{selectedAntrianSelesai?.pasien?.name || 'ini'}</strong> (Rp):
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500 font-semibold">Rp</span>
+                    <input
+                      type="text"
+                      value={inputHarga}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setInputHarga(val ? Number(val).toLocaleString('id-ID') : '');
+                      }}
+                      className="w-full border border-gray-300 px-3 py-2 pl-10 rounded focus:ring-green-500 focus:border-green-500 font-semibold text-lg"
+                      placeholder="0"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeSelesaikanModal}
+                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 font-semibold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800 font-semibold shadow flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-check"></i> Konfirmasi Selesai
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
