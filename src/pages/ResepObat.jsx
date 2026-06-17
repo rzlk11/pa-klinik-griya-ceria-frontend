@@ -63,7 +63,12 @@ function ResepObat() {
         await axios.delete(`${import.meta.env.VITE_API_URL}/resep-obat/${selectedResep.id_resep}`, { withCredentials: true });
       } else {
         const form = e.target;
-        const data = { id_rekam_medis: Number(form.id_rekam_medis.value), tanggal_resep: form.tanggal_resep.value, status_resep: form.status_resep.value };
+        const data = { 
+          id_rekam_medis: Number(form.id_rekam_medis.value), 
+          tanggal_resep: form.tanggal_resep.value, 
+          status_resep: form.status_resep.value,
+          resep_teks: form.resep_teks.value
+        };
         if (modalType === 'add') {
           await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, data, { withCredentials: true });
         } else if (modalType === 'edit') {
@@ -98,11 +103,26 @@ function ResepObat() {
           {row.status_resep}
         </span>
       ) },
-    { name: 'Detail Obat', cell: row => row.details.length === 0 ? <span className="text-gray-400">-</span> : (
-        <ul className="list-disc ml-4 my-2">
-          {row.details.map((detail) => (<li key={detail.id_detail_resep}>{detail.obat?.nama_obat || 'Obat tidak diketahui'} ({detail.dosis}) - {detail.jumlah_obat} {detail.obat?.satuan || ''}</li>))}
-        </ul>
-      ), wrap: true },
+    { name: 'Detail Obat', cell: row => {
+        if (row.resep_teks && row.resep_teks.trim() !== '') {
+          return (
+            <div className="text-xs text-gray-700 bg-gray-50 border border-gray-200 p-2 rounded font-mono whitespace-pre-wrap max-h-32 overflow-y-auto my-2 w-full">
+              {row.resep_teks}
+            </div>
+          );
+        } else if (row.details && row.details.length > 0) {
+          return (
+            <ul className="list-disc ml-4 my-2 text-xs text-gray-700 max-h-32 overflow-y-auto w-full pr-2">
+              {row.details.map((detail) => (
+                <li key={detail.id_detail_resep}>
+                  {detail.obat?.nama_obat || 'Obat tidak diketahui'} ({detail.dosis}) - {detail.jumlah_obat} {detail.obat?.satuan || ''}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        return <span className="text-gray-400 italic">Tanpa obat</span>;
+      }, wrap: true, width: '300px' },
     { name: 'Aksi', width: '250px', cell: (row) => (
         <div className="flex gap-2">
           <button className="text-green-600 hover:underline font-semibold" onClick={() => navigate(`/resep-obat/${row.id_resep}/detail`)}>Kelola Obat</button>
@@ -227,6 +247,16 @@ function ResepObat() {
                           isClearable
                           placeholder="Pilih Status"
                         />
+                      </div>
+                      <div>
+                        <label className="block mb-1">Teks Resep (Opsional)</label>
+                        <textarea
+                          name="resep_teks"
+                          rows="4"
+                          defaultValue={selectedResep?.resep_teks || ''}
+                          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                          placeholder="Masukkan teks resep obat di sini jika tidak menggunakan obat dari database..."
+                        ></textarea>
                       </div>
                       <div className="flex justify-end gap-2 pt-2">
                         <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
