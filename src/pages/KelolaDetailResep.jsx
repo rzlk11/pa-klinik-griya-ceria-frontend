@@ -143,7 +143,7 @@ function KelolaDetailResep() {
 
       <div className="bg-white rounded-lg shadow p-6 mb-8 border-l-4 border-green-700">
         <h2 className="text-xl font-bold text-gray-800 mb-2">Informasi Resep</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
           <div><span className="text-gray-500 mr-2">Tanggal Resep:</span><span className="font-semibold">{resep.tanggal_resep}</span></div>
           <div><span className="text-gray-500 mr-2">Status Resep:</span>
             <span className={`font-semibold ${resep.status_resep === 'Aktif' ? 'text-green-700' : resep.status_resep === 'Selesai' ? 'text-blue-700' : 'text-red-700'}`}>
@@ -152,6 +152,14 @@ function KelolaDetailResep() {
           </div>
           <div><span className="text-gray-500 mr-2">ID Rekam Medis:</span><span className="font-semibold">{resep.id_rekam_medis || '-'}</span></div>
         </div>
+        {resep.resep_teks && resep.resep_teks.trim() !== '' && (
+          <div className="border-t pt-4 mt-2">
+            <span className="text-gray-500 font-semibold mb-2 block">Teks Resep (Catatan Dokter):</span>
+            <div className="bg-gray-50 border border-gray-200 p-3 rounded font-mono text-sm whitespace-pre-wrap text-gray-700">
+              {resep.resep_teks}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mb-4">
