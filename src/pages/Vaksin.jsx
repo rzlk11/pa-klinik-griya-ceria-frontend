@@ -23,6 +23,7 @@ function Vaksin() {
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedVaksin, setSelectedVaksin] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [inputHarga, setInputHarga] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -40,12 +41,14 @@ function Vaksin() {
   const handleAdd = () => {
     setModalType('add');
     setSelectedVaksin(null);
+    setInputHarga('');
     setShowModal(true);
   };
 
   const handleEdit = (vaksin) => {
     setModalType('edit');
     setSelectedVaksin(vaksin);
+    setInputHarga(vaksin.harga_per_unit ? Number(vaksin.harga_per_unit).toLocaleString('id-ID') : '');
     setShowModal(true);
   };
 
@@ -71,7 +74,7 @@ function Vaksin() {
           nama_vaksin: form.nama_vaksin.value,
           jenis: form.jenis.value,
           stok: Number(form.stok.value),
-          harga_per_unit: Number(form.harga_per_unit.value),
+          harga_per_unit: Number(inputHarga.replace(/\./g, '')),
           satuan: form.satuan.value,
         };
 
@@ -256,9 +259,12 @@ function Vaksin() {
                   <label className="block mb-1">Harga per Unit</label>
                   <input
                     name="harga_per_unit"
-                    type="number"
-                    min={0}
-                    defaultValue={selectedVaksin?.harga_per_unit || ''}
+                    type="text"
+                    value={inputHarga}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setInputHarga(val ? Number(val).toLocaleString('id-ID') : '');
+                    }}
                     required
                     className="w-full border px-3 py-2 rounded"
                   />

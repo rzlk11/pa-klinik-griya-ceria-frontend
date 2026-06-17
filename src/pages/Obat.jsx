@@ -31,6 +31,7 @@ function Obat() {
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit' | 'delete'
   const [selectedObat, setSelectedObat] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [inputHarga, setInputHarga] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -48,12 +49,14 @@ function Obat() {
   const handleAdd = () => {
     setModalType('add');
     setSelectedObat(null);
+    setInputHarga('');
     setShowModal(true);
   };
 
   const handleEdit = (obat) => {
     setModalType('edit');
     setSelectedObat(obat);
+    setInputHarga(obat.harga_per_unit ? Number(obat.harga_per_unit).toLocaleString('id-ID') : '');
     setShowModal(true);
   };
 
@@ -80,7 +83,7 @@ function Obat() {
           kekuatan: form.kekuatan.value,
           jenis: form.jenis.value,
           stok: Number(form.stok.value),
-          harga_per_unit: Number(form.harga_per_unit.value),
+          harga_per_unit: Number(inputHarga.replace(/\./g, '')),
           satuan: form.satuan.value,
         };
 
@@ -280,9 +283,12 @@ function Obat() {
                       <label className="block mb-1">Harga per Unit</label>
                       <input
                         name="harga_per_unit"
-                        type="number"
-                        min={0}
-                        defaultValue={selectedObat?.harga_per_unit || ''}
+                        type="text"
+                        value={inputHarga}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setInputHarga(val ? Number(val).toLocaleString('id-ID') : '');
+                        }}
                         required
                         className="w-full border px-3 py-2 rounded"
                       />

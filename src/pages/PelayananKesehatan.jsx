@@ -23,6 +23,7 @@ function PelayananKesehatan() {
   const [modalType, setModalType] = useState('add');
   const [selectedPelayanan, setSelectedPelayanan] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [inputHarga, setInputHarga] = useState('');
 
   useEffect(() => { fetchData(); }, []);
 
@@ -34,8 +35,8 @@ function PelayananKesehatan() {
   };
 
   const stats = getStats(pelayananList);
-  const handleAdd = () => { setModalType('add'); setSelectedPelayanan(null); setShowModal(true); };
-  const handleEdit = (p) => { setModalType('edit'); setSelectedPelayanan(p); setShowModal(true); };
+  const handleAdd = () => { setModalType('add'); setSelectedPelayanan(null); setInputHarga(''); setShowModal(true); };
+  const handleEdit = (p) => { setModalType('edit'); setSelectedPelayanan(p); setInputHarga(p.harga ? Number(p.harga).toLocaleString('id-ID') : ''); setShowModal(true); };
   const handleDelete = (p) => { setModalType('delete'); setSelectedPelayanan(p); setShowModal(true); };
   const handleModalClose = () => { setShowModal(false); setSelectedPelayanan(null); };
 
@@ -46,7 +47,7 @@ function PelayananKesehatan() {
         await axios.delete(`${import.meta.env.VITE_API_URL}/pelayanan/${selectedPelayanan.id_pelayanan}`, { withCredentials: true });
       } else {
         const form = e.target;
-        const data = { nama_pelayanan: form.nama_pelayanan.value, deskripsi: form.deskripsi.value, harga: Number(form.harga.value) };
+        const data = { nama_pelayanan: form.nama_pelayanan.value, deskripsi: form.deskripsi.value, harga: Number(inputHarga.replace(/\./g, '')) };
         if (modalType === 'add') {
           await axios.post(`${import.meta.env.VITE_API_URL}/pelayanan`, data, { withCredentials: true });
         } else if (modalType === 'edit') {
@@ -138,7 +139,10 @@ function PelayananKesehatan() {
                 </div>
                 <div>
                   <label className="block mb-1">Harga</label>
-                  <input name="harga" type="number" min={0} defaultValue={selectedPelayanan?.harga || ''} required className="w-full border px-3 py-2 rounded" />
+                  <input name="harga" type="text" value={inputHarga} onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setInputHarga(val ? Number(val).toLocaleString('id-ID') : '');
+                  }} required className="w-full border px-3 py-2 rounded" />
                 </div>
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={handleModalClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Batal</button>
