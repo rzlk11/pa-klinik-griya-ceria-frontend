@@ -7,24 +7,12 @@ function DokterDashboard() {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const [pasienCount, setPasienCount] = useState(0);
-  const [rekamMedisCount, setRekamMedisCount] = useState(0);
-  const [resepCount, setResepCount] = useState(0);
   const [antrianList, setAntrianList] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [pasienRes, rekamMedisRes, resepRes, antrianRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/pasien`, { withCredentials: true }),
-          axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true }),
-          axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true }),
-          axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true }),
-        ]);
-
-        setPasienCount(pasienRes.data.length);
-        setRekamMedisCount(rekamMedisRes.data.length);
-        setResepCount(resepRes.data.length);
+        const antrianRes = await axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true });
         setAntrianList(antrianRes.data.filter(a => ['Menunggu', 'Diperiksa'].includes(a.status_antrian)));
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -44,11 +32,6 @@ function DokterDashboard() {
     }
   };
 
-  const stats = [
-    { label: 'Total Pasien', value: pasienCount, icon: <i className="fa-solid fa-user-group"></i> },
-    { label: 'Total Rekam Medis', value: rekamMedisCount, icon: <i className="fa-solid fa-file-medical"></i> },
-    { label: 'Total Resep Obat', value: resepCount, icon: <i className="fa-solid fa-prescription"></i> },
-  ];
 
   const columns = [
     { name: 'No', selector: (row, index) => index + 1, width: '60px' },
@@ -103,19 +86,6 @@ function DokterDashboard() {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded border border-gray-200 p-5 flex flex-col items-start">
-            <div className="text-gray-400 text-sm flex items-center mb-4">
-              <span className="mr-2 text-gray-300 text-lg">{stat.icon}</span>
-              <span className="font-medium">{stat.label}</span>
-            </div>
-            <div className="text-3xl font-bold text-green-800">
-              {stat.value}
-            </div>
-          </div>
-        ))}
-      </div>
 
       <div className="bg-white rounded border border-gray-200 p-6 mb-8">
         <h2 className="text-xl font-bold text-green-800 mb-2">Antrian Pasien</h2>
