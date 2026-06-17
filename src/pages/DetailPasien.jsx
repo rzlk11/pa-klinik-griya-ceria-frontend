@@ -96,11 +96,6 @@ function DetailPasien() {
   const transaksiColumns = [
     { name: 'Tanggal', selector: row => row.tanggal_transaksi, sortable: true },
     { name: 'Total Biaya', selector: row => row.total_biaya, sortable: true, cell: row => `Rp ${Number(row.total_biaya).toLocaleString('id-ID')}` },
-    { name: 'Status', selector: row => row.status_pembayaran, sortable: true, cell: row => (
-        <span className={row.status_pembayaran === 'Lunas' ? 'text-green-700 font-semibold' : 'text-yellow-700 font-semibold'}>
-          {row.status_pembayaran}
-        </span>
-      ) },
   ];
 
   return (
