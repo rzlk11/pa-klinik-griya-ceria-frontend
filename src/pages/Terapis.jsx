@@ -40,6 +40,26 @@ function Terapis() {
   const [selectedTerapis, setSelectedTerapis] = useState(null);
   const [searchText, setSearchText] = useState('');
 
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [clearSelectedRows, setClearSelectedRows] = useState(false);
+  const handleRowSelected = React.useCallback(state => setSelectedRows(state.selectedRows), []);
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} terapis terpilih?`)) {
+      try {
+        await Promise.all(selectedRows.map(row => 
+          axios.delete(`${import.meta.env.VITE_API_URL}/terapis/${row.id_terapis}`, { withCredentials: true })
+        ));
+        setSelectedRows([]);
+        setClearSelectedRows(!clearSelectedRows);
+        fetchData();
+      } catch (error) {
+        console.error(error);
+        alert("Terjadi kesalahan saat menghapus beberapa data.");
+      }
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -166,6 +186,11 @@ function Terapis() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-green-800">Tabel Data Terapis</h2>
         <div className="flex items-center gap-2">
+          {selectedRows.length > 0 && (
+            <button className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 flex items-center gap-2 shadow" onClick={handleBulkDelete}>
+              <i className="fa-solid fa-trash"></i> Hapus Terpilih ({selectedRows.length})
+            </button>
+          )}
           <input
             type="text"
             placeholder="Search"
@@ -195,6 +220,7 @@ function Terapis() {
           customStyles={customStyles}
           highlightOnHover
           striped
+          selectableRows onSelectedRowsChange={handleRowSelected} clearSelectedRows={clearSelectedRows}
         />
       </div>
 

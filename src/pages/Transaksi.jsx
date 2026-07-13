@@ -45,6 +45,26 @@ function Transaksi() {
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState({ startDate: '', endDate: '', idPasien: '', idTerapis: '' });
 
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [clearSelectedRows, setClearSelectedRows] = useState(false);
+  const handleRowSelected = React.useCallback(state => setSelectedRows(state.selectedRows), []);
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} transaksi terpilih?`)) {
+      try {
+        await Promise.all(selectedRows.map(row => 
+          axios.delete(`${import.meta.env.VITE_API_URL}/transaksi/${row.id_transaksi}`, { withCredentials: true })
+        ));
+        setSelectedRows([]);
+        setClearSelectedRows(!clearSelectedRows);
+        fetchData();
+      } catch (error) {
+        console.error(error);
+        alert("Terjadi kesalahan saat menghapus beberapa data.");
+      }
+    }
+  };
+
   useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
@@ -56,20 +76,30 @@ function Transaksi() {
       if (pel && pel.harga) biayaPelayanan = Number(pel.harga);
     }
 
+    let isResepTeksOnly = false;
     if (selectedResepId) {
       const res = resepList.find(r => r.id_resep === Number(selectedResepId));
-      if (res && res.details) {
+      if (res && res.details && res.details.length > 0) {
         res.details.forEach(d => {
           if (d.obat && d.obat.harga_per_unit) {
             biayaObat += d.jumlah_obat * Number(d.obat.harga_per_unit);
           }
         });
+      } else if (res && res.resep_teks) {
+        isResepTeksOnly = true;
+        if (selectedTransaksi) {
+           biayaObat = Number(selectedTransaksi.total_biaya || 0) - biayaPelayanan;
+           if (biayaObat < 0) biayaObat = 0;
+        }
       }
     }
 
     setRincianBiaya({ pelayanan: biayaPelayanan, obat: biayaObat });
+    
     if (modalType !== 'edit' || (modalType === 'edit' && (selectedPelayananId !== selectedTransaksi?.id_pelayanan || selectedResepId !== selectedTransaksi?.id_resep))) {
-      setTotalBiaya(biayaPelayanan + biayaObat);
+      if (!isResepTeksOnly) {
+         setTotalBiaya(biayaPelayanan + biayaObat);
+      }
     }
   }, [selectedPelayananId, selectedResepId, pelayananList, resepList, modalType, selectedTransaksi]);
 
@@ -150,12 +180,20 @@ function Transaksi() {
     let biayaObat = 0;
     if (row.id_resep) {
       const res = resepList.find(r => r.id_resep === row.id_resep);
-      if (res && res.details) {
+      if (res && res.details && res.details.length > 0) {
         res.details.forEach(d => {
           if (d.obat && d.obat.harga_per_unit) {
             biayaObat += d.jumlah_obat * Number(d.obat.harga_per_unit);
           }
         });
+      } else if (res && res.resep_teks) {
+        let biayaPelayanan = 0;
+        if (row.id_pelayanan) {
+          const pel = pelayananList.find(p => p.id_pelayanan === row.id_pelayanan);
+          if (pel && pel.harga) biayaPelayanan = Number(pel.harga);
+        }
+        biayaObat = Number(row.total_biaya || 0) - biayaPelayanan;
+        if (biayaObat < 0) biayaObat = 0;
       }
     }
     return biayaObat;
@@ -290,6 +328,11 @@ function Transaksi() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-green-800">Tabel Data Transaksi</h2>
         <div className="flex items-center gap-2">
+          {selectedRows.length > 0 && (
+            <button className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 flex items-center gap-2 shadow" onClick={handleBulkDelete}>
+              <i className="fa-solid fa-trash"></i> Hapus Terpilih ({selectedRows.length})
+            </button>
+          )}
           <input type="text" placeholder="Search" value={searchText} onChange={(e) => setSearchText(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700" />
           <button className="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 flex items-center gap-2" onClick={handleExportExcel}>
@@ -315,7 +358,8 @@ function Transaksi() {
         <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
           noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data transaksi.</div>}
-          customStyles={customStyles} highlightOnHover striped />
+          customStyles={customStyles} highlightOnHover striped
+          selectableRows onSelectedRowsChange={handleRowSelected} clearSelectedRows={clearSelectedRows} />
       </div>
 
       {showModal && (

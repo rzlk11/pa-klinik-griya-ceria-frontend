@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
 import Select from 'react-select';
@@ -16,9 +15,8 @@ const paginationComponentOptions = {
   noRowsPerPage: false, selectAllRowsItem: true, selectAllRowsItemText: 'Semua',
 };
 
-function KelolaDetailResep() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+function KelolaResepModal({ idResep, onClose }) {
+  const id = idResep;
   const [resep, setResep] = useState(null);
   const [obatList, setObatList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -144,22 +142,30 @@ function KelolaDetailResep() {
       ), ignoreRowClick: true },
   ], []);
 
-  if (loading) return <div className="text-center py-20 text-gray-500">Memuat data...</div>;
+  if (loading) return (
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg text-center">Memuat data...</div>
+    </div>
+  );
   if (!resep) return (
-    <div className="text-center py-20">
-      <h2 className="text-2xl text-gray-600 mb-4">Resep obat tidak ditemukan</h2>
-      <button onClick={() => navigate('/resep-obat')} className="text-green-700 hover:underline">Kembali</button>
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-xl text-center">
+        <h2 className="text-2xl text-gray-600 mb-4">Resep obat tidak ditemukan</h2>
+        <button onClick={onClose} className="text-green-700 hover:underline">Tutup</button>
+      </div>
     </div>
   );
 
   return (
-    <div>
-      <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate('/resep-obat')} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
-          <i className="fa-solid fa-arrow-left mr-2"></i> Kembali
-        </button>
-        <h1 className="text-3xl font-bold text-green-800">Kelola Obat untuk Resep #{resep.id_resep}</h1>
-      </div>
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-gray-100 rounded-xl shadow-2xl w-full max-w-5xl my-auto">
+        <div className="p-6 h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold text-green-800">Kelola Obat untuk Resep #{resep.id_resep}</h1>
+            <button onClick={onClose} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 font-bold">
+              <i className="fa-solid fa-times mr-2"></i> Tutup
+            </button>
+          </div>
 
       <div className="bg-white rounded-lg shadow p-6 mb-8 border-l-4 border-green-700">
         <h2 className="text-xl font-bold text-gray-800 mb-2">Informasi Resep</h2>
@@ -213,7 +219,7 @@ function KelolaDetailResep() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-green-800">
@@ -306,8 +312,10 @@ function KelolaDetailResep() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }
 
-export default KelolaDetailResep;
+export default KelolaResepModal;

@@ -2,24 +2,57 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import ExpandablePemeriksaan from '../components/ExpandablePemeriksaan';
 
 function DokterDashboard() {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [antrianList, setAntrianList] = useState([]);
+  const [rekamMedisList, setRekamMedisList] = useState([]);
+  const [resepList, setResepList] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const antrianRes = await axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true });
-        setAntrianList(antrianRes.data.filter(a => ['Menunggu', 'Diperiksa'].includes(a.status_antrian)));
+        const [antrianRes, rmRes, resepRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true }),
+          axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true })
+        ]);
+        setAntrianList(antrianRes.data.filter(a => ['Menunggu', 'Diperiksa', 'Menunggu Obat'].includes(a.status_antrian)));
+        setRekamMedisList(rmRes.data);
+        setResepList(resepRes.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       }
     };
     fetchData();
   }, []);
+
+  const [expandedRowId, setExpandedRowId] = useState(null);
+
+  const handleRowClick = (row) => {
+    setExpandedRowId(prev => prev === row.id_antrian ? null : row.id_antrian);
+  };
+
+  const ExpandedComponent = ({ data }) => {
+    return (
+      <ExpandablePemeriksaan 
+        data={data} 
+        onSelesai={() => {
+          // Refetch to get updated status and records
+          axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true })
+            .then(res => setAntrianList(res.data.filter(a => ['Menunggu', 'Diperiksa', 'Menunggu Obat'].includes(a.status_antrian))));
+          axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true })
+            .then(res => setRekamMedisList(res.data));
+          axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true })
+            .then(res => setResepList(res.data));
+        }}
+        toggleExpand={() => setExpandedRowId(null)}
+      />
+    );
+  };
 
   const handleLogout = async () => {
     try {
@@ -40,18 +73,38 @@ function DokterDashboard() {
     { name: 'Keluhan Awal', selector: row => row.keluhan || '-' },
     { name: 'BB / Suhu', cell: row => `${row.berat_badan ? row.berat_badan + 'kg' : '-'} / ${row.suhu ? row.suhu + '°C' : '-'}` },
     { name: 'Status', cell: row => (
-        <span className={`px-2 py-1 rounded text-xs font-semibold ${row.status_antrian === 'Diperiksa' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+          row.status_antrian === 'Diperiksa' ? 'bg-blue-100 text-blue-800' :
+          row.status_antrian === 'Menunggu Obat' ? 'bg-orange-100 text-orange-800' :
+          'bg-yellow-100 text-yellow-800'
+        }`}>
           {row.status_antrian}
         </span>
       ), sortable: true },
-    { name: 'Aksi', cell: row => (
-        <button 
-          className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 font-semibold text-sm"
-          onClick={() => navigate(`/pemeriksaan/${row.id_antrian}`)}
-        >
-          {row.status_antrian === 'Diperiksa' ? 'Lanjutkan' : 'Periksa'}
-        </button>
-      ), ignoreRowClick: true, width: '120px' }
+    { name: 'Aksi', cell: row => {
+        const isExpanded = expandedRowId === row.id_antrian;
+        
+        if (row.status_antrian === 'Menunggu Obat') {
+          return (
+            <button 
+              className={`${isExpanded ? 'bg-gray-500 hover:bg-gray-600' : 'bg-orange-600 hover:bg-orange-700'} text-white px-3 py-1.5 rounded font-semibold text-sm flex items-center gap-1 whitespace-nowrap`}
+              onClick={() => handleRowClick(row)}
+            >
+              <i className={`fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-pen-to-square'}`}></i> 
+              {isExpanded ? 'Tutup' : 'Edit Pemeriksaan'}
+            </button>
+          );
+        }
+
+        return (
+          <button 
+            className={`${isExpanded ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-700 hover:bg-green-800'} text-white px-4 py-1.5 rounded font-semibold text-sm whitespace-nowrap`}
+            onClick={() => handleRowClick(row)}
+          >
+            {isExpanded ? 'Tutup' : (row.status_antrian === 'Diperiksa' ? 'Lanjutkan' : 'Periksa')}
+          </button>
+        );
+      }, ignoreRowClick: true, width: '180px' }
   ];
 
   const customStyles = {
@@ -97,6 +150,11 @@ function DokterDashboard() {
             customStyles={customStyles}
             noDataComponent={<div className="p-4 text-gray-500 text-center">Tidak ada antrian saat ini.</div>}
             highlightOnHover
+            expandableRows
+            expandableRowsComponent={ExpandedComponent}
+            expandableRowExpanded={row => row.id_antrian === expandedRowId}
+            onRowExpandToggled={(expanded, row) => setExpandedRowId(expanded ? row.id_antrian : null)}
+            expandableRowsHideExpander
           />
         </div>
       </div>

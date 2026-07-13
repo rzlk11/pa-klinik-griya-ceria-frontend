@@ -24,6 +24,8 @@ function Antrian() {
   const [pelayananList, setPelayananList] = useState([]);
   const [transaksiList, setTransaksiList] = useState([]);
   const [vaksinList, setVaksinList] = useState([]);
+  const [rekamMedisList, setRekamMedisList] = useState([]);
+  const [resepList, setResepList] = useState([]);
   const navigate = useNavigate();
 
   const [showModal, setShowModal] = useState(false);
@@ -46,6 +48,26 @@ function Antrian() {
     name: '', date_of_birth: '', gender: 'L', nama_orang_tua: '', no_telp_orang_tua: ''
   });
 
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [clearSelectedRows, setClearSelectedRows] = useState(false);
+  const handleRowSelected = React.useCallback(state => setSelectedRows(state.selectedRows), []);
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} data terpilih?`)) {
+      try {
+        await Promise.all(selectedRows.map(row => 
+          axios.delete(`${import.meta.env.VITE_API_URL}/antrian/${row.id_antrian}`, { withCredentials: true })
+        ));
+        setSelectedRows([]);
+        setClearSelectedRows(!clearSelectedRows);
+        fetchData();
+      } catch (error) {
+        console.error(error);
+        alert("Terjadi kesalahan saat menghapus beberapa data.");
+      }
+    }
+  };
+
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
@@ -62,6 +84,10 @@ function Antrian() {
       setTransaksiList(transaksiRes.data);
       const vaksinRes = await axios.get(`${import.meta.env.VITE_API_URL}/vaksin`, { withCredentials: true });
       setVaksinList(vaksinRes.data);
+      const rmRes = await axios.get(`${import.meta.env.VITE_API_URL}/rekam-medis`, { withCredentials: true });
+      setRekamMedisList(rmRes.data);
+      const resepRes = await axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true });
+      setResepList(resepRes.data);
     } catch (error) {
       console.error(error);
     }
@@ -182,6 +208,11 @@ function Antrian() {
           }
         }
 
+        if (!selectedPelayananId) {
+          alert('Pelayanan Kesehatan wajib dipilih!');
+          return;
+        }
+
         const data = {
           id_pasien: finalPasienId,
           id_terapis: selectedTerapisId,
@@ -234,10 +265,38 @@ function Antrian() {
       ), sortable: true
     },
     {
-      name: 'Aksi', width: '240px', cell: (row) => {
+      name: 'Resep Obat', width: '350px', cell: (row) => {
+        // Gunakan logic dari ApotekerDashboard agar lebih akurat mengambil resep terbaru pasien ini
+        const resep = [...resepList]
+          .filter(r => r.rekam_medis_detail?.id_pasien == row.id_pasien)
+          .sort((a, b) => b.id_resep - a.id_resep)[0];
+
+        let resepContent = null;
+        if (resep) {
+          if (resep.resep_teks) {
+            resepContent = resep.resep_teks;
+          } else if (resep.details && resep.details.length > 0) {
+            resepContent = resep.details.map(d => `${d.obat?.nama_obat || 'Obat Tidak Diketahui'} (${d.jumlah_obat}x) - ${d.aturan_pakai}`).join('\n');
+          }
+        }
+
+        if (!resepContent) return <span className="text-gray-400 italic text-xs">Belum ada resep obat</span>;
+
+        return (
+          <div className="py-2 w-full">
+            <div className="border border-green-100 bg-green-50 rounded p-2 text-xs whitespace-pre-wrap font-mono w-full text-gray-700">
+              {resepContent}
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      name: 'Aksi', minWidth: '200px', cell: (row) => {
         const matchedTransactions = transaksiList.filter(t => t.id_antrian === row.id_antrian || (t.id_pasien === row.id_pasien && t.tanggal_transaksi === row.tanggal_antrian));
         const isPaid = matchedTransactions.length > 0;
         const transaction = isPaid ? (matchedTransactions.find(t => t.id_antrian === row.id_antrian) || matchedTransactions.find(t => t.bukti_transaksi) || matchedTransactions[matchedTransactions.length - 1]) : null;
+
         return (
           <div className="flex gap-3 items-center">
             {row.status_antrian === 'Selesai' && !isPaid && (
@@ -298,6 +357,11 @@ function Antrian() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-green-800">Daftar Antrian Kunjungan</h2>
         <div className="flex items-center gap-2">
+          {selectedRows.length > 0 && (
+            <button className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 flex items-center gap-2 shadow" onClick={handleBulkDelete}>
+              <i className="fa-solid fa-trash"></i> Hapus Terpilih ({selectedRows.length})
+            </button>
+          )}
           <input type="text" placeholder="Cari..." value={searchText} onChange={(e) => setSearchText(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700" />
           <button className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900 shadow" onClick={handleAdd}>
@@ -315,10 +379,19 @@ function Antrian() {
       />
 
       <div className="bg-white rounded-lg shadow overflow-x-auto">
-        <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
-          paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
-          noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data antrian.</div>}
-          customStyles={customStyles} highlightOnHover striped />
+        <DataTable
+          columns={columns}
+          data={filteredData}
+          pagination
+          paginationComponentOptions={paginationComponentOptions}
+          paginationPerPage={10}
+          paginationRowsPerPageOptions={[5, 10, 20]}
+          noDataComponent={<div className="text-center text-gray-400 py-8">Tidak ada data antrian.</div>}
+          customStyles={customStyles}
+          highlightOnHover
+          striped
+          selectableRows onSelectedRowsChange={handleRowSelected} clearSelectedRows={clearSelectedRows}
+        />
       </div>
 
       {showModal && (
@@ -383,11 +456,17 @@ function Antrian() {
                 <div className="border-b pb-3">
                   <h4 className="font-bold text-gray-700 mb-2">Resep Obat</h4>
                   {detailData.resep && detailData.resep.resep_teks && detailData.resep.resep_teks.trim() !== '' ? (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm whitespace-pre-wrap font-mono w-full">
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm whitespace-pre-wrap font-mono w-full mb-3">
                       {detailData.resep.resep_teks}
                     </div>
+                  ) : detailData.resepDetails && detailData.resepDetails.length > 0 ? (
+                    <ul className="list-disc pl-4 text-sm text-gray-700 mb-3 space-y-1">
+                      {detailData.resepDetails.map(d => (
+                        <li key={d.id_detail_resep}>{d.obat?.nama_obat} - {d.jumlah_obat} {d.obat?.satuan} ({d.aturan_pakai})</li>
+                      ))}
+                    </ul>
                   ) : (
-                    <div className="text-sm text-gray-500 italic">Tidak ada resep obat.</div>
+                    <div className="text-sm text-gray-500 italic mb-3">Tidak ada resep obat.</div>
                   )}
                 </div>
 
@@ -480,12 +559,13 @@ function Antrian() {
                   />
                 </div>
                 <div>
-                  <label className="block mb-1 font-semibold text-gray-700 text-sm">Pelayanan Kesehatan</label>
+                  <label className="block mb-1 font-semibold text-gray-700 text-sm">Pelayanan Kesehatan <span className="text-red-500">*</span></label>
                   <Select
                     options={pelayananList.map(p => ({ value: p.id_pelayanan, label: p.nama_pelayanan }))}
                     value={pelayananList.map(p => ({ value: p.id_pelayanan, label: p.nama_pelayanan })).find(o => o.value === Number(selectedPelayananId)) || null}
                     onChange={(opt) => setSelectedPelayananId(opt ? opt.value : '')}
-                    isClearable placeholder="-- Opsional: Pilih Pelayanan --"
+                    isClearable placeholder="-- Pilih Pelayanan --"
+                    required
                   />
                 </div>
 
@@ -498,7 +578,7 @@ function Antrian() {
                       onChange={(opt) => setSelectedVaksinId(opt ? opt.value : '')}
                       isClearable placeholder="-- Pilih Vaksin --"
                     />
-                    <p className="text-xs text-blue-600 mt-1 italic">*Jika vaksin dipilih, antrian berstatus Selesai. Rekam medis & transaksi akan langsung dibuat.</p>
+                    <p className="text-xs text-blue-600 mt-1 italic">*Jika vaksin dipilih, antrian berstatus Menunggu Obat. Rekam medis & transaksi awal vaksin akan dibuat otomatis.</p>
                   </div>
                 ) : null}
                 <div>

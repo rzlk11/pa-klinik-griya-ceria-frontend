@@ -25,6 +25,26 @@ function PelayananKesehatan() {
   const [searchText, setSearchText] = useState('');
   const [inputHarga, setInputHarga] = useState('');
 
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [clearSelectedRows, setClearSelectedRows] = useState(false);
+  const handleRowSelected = React.useCallback(state => setSelectedRows(state.selectedRows), []);
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} pelayanan terpilih?`)) {
+      try {
+        await Promise.all(selectedRows.map(row => 
+          axios.delete(`${import.meta.env.VITE_API_URL}/pelayanan/${row.id_pelayanan}`, { withCredentials: true })
+        ));
+        setSelectedRows([]);
+        setClearSelectedRows(!clearSelectedRows);
+        fetchData();
+      } catch (error) {
+        console.error(error);
+        alert("Terjadi kesalahan saat menghapus beberapa data.");
+      }
+    }
+  };
+
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
@@ -96,6 +116,11 @@ function PelayananKesehatan() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-green-800">Tabel Data Pelayanan Kesehatan</h2>
         <div className="flex items-center gap-2">
+          {selectedRows.length > 0 && (
+            <button className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 flex items-center gap-2 shadow" onClick={handleBulkDelete}>
+              <i className="fa-solid fa-trash"></i> Hapus Terpilih ({selectedRows.length})
+            </button>
+          )}
           <input type="text" placeholder="Search" value={searchText} onChange={(e) => setSearchText(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-700" />
           <button className="bg-green-800 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-900" onClick={handleAdd}>
@@ -107,7 +132,8 @@ function PelayananKesehatan() {
         <DataTable columns={columns} data={filteredData} pagination paginationComponentOptions={paginationComponentOptions}
           paginationPerPage={10} paginationRowsPerPageOptions={[5, 10, 20, 50]}
           noDataComponent={<div className="text-center text-gray-400 py-8">Belum ada data pelayanan.</div>}
-          customStyles={customStyles} highlightOnHover striped />
+          customStyles={customStyles} highlightOnHover striped
+          selectableRows onSelectedRowsChange={handleRowSelected} clearSelectedRows={clearSelectedRows} />
       </div>
 
       {showModal && (

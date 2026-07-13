@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from 'react-data-table-component';
+import KelolaResepModal from '../components/KelolaResepModal';
 
 function ApotekerDashboard() {
   const navigate = useNavigate();
@@ -15,22 +16,39 @@ function ApotekerDashboard() {
   const [selectedAntrianSelesai, setSelectedAntrianSelesai] = useState(null);
   const [inputHarga, setInputHarga] = useState('');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [resepRes, antrianRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true }),
-          axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true }),
-        ]);
+  // Modal Kelola Resep
+  const [showKelolaResep, setShowKelolaResep] = useState(false);
+  const [selectedResepId, setSelectedResepId] = useState(null);
 
-        setResepList(resepRes.data);
-        setAntrianList(antrianRes.data.filter(a => a.status_antrian === 'Menunggu Obat'));
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      }
-    };
+  const fetchData = async () => {
+    try {
+      const [resepRes, antrianRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/resep-obat`, { withCredentials: true }),
+        axios.get(`${import.meta.env.VITE_API_URL}/antrian`, { withCredentials: true }),
+      ]);
+
+      setResepList(resepRes.data);
+      setAntrianList(antrianRes.data.filter(a => a.status_antrian === 'Menunggu Obat'));
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  const openKelolaResep = (idResep) => {
+    setSelectedResepId(idResep);
+    setShowKelolaResep(true);
+  };
+
+  const closeKelolaResep = () => {
+    setShowKelolaResep(false);
+    setSelectedResepId(null);
+    fetchData(); // Refresh data setelah resep diupdate
+  };
+
 
   const openSelesaikanModal = (row) => {
     setSelectedAntrianSelesai(row);
@@ -163,16 +181,34 @@ function ApotekerDashboard() {
           </div>
         );
     }, width: '380px' },
-    { name: 'Aksi', cell: row => (
-        <div className="flex gap-2">
-          <button 
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-semibold shadow flex items-center gap-2"
-            onClick={() => openSelesaikanModal(row)}
-          >
-            <i className="fa-solid fa-check-circle"></i> Selesaikan
-          </button>
-        </div>
-      ), ignoreRowClick: true, width: '200px' }
+    { name: 'Aksi', cell: row => {
+        const resep = [...resepList]
+          .filter(r => r.rekam_medis_detail?.id_pasien == row.id_pasien)
+          .sort((a, b) => b.id_resep - a.id_resep)[0];
+          
+        return (
+          <div className="flex gap-2">
+            <button 
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold shadow flex items-center gap-2"
+              onClick={() => {
+                if (resep) {
+                  openKelolaResep(resep.id_resep);
+                } else {
+                  alert("Tidak ada resep untuk antrian ini.");
+                }
+              }}
+            >
+              <i className="fa-solid fa-pills"></i> Kelola Obat
+            </button>
+            <button 
+              className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-semibold shadow flex items-center gap-2"
+              onClick={() => openSelesaikanModal(row)}
+            >
+              <i className="fa-solid fa-check-circle"></i> Selesaikan
+            </button>
+          </div>
+        );
+      }, ignoreRowClick: true, width: '280px' }
   ];
 
   const customStyles = {
@@ -298,6 +334,11 @@ function ApotekerDashboard() {
           </div>
         );
       })()}
+
+      {/* Modal Kelola Resep Digital */}
+      {showKelolaResep && selectedResepId && (
+        <KelolaResepModal idResep={selectedResepId} onClose={closeKelolaResep} />
+      )}
     </div>
   );
 }

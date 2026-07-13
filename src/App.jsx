@@ -19,7 +19,6 @@ import RekamMedis from './pages/RekamMedis';
 import PelayananKesehatan from './pages/PelayananKesehatan';
 import DetailPasien from './pages/DetailPasien';
 import Antrian from './pages/Antrian';
-import PemeriksaanPasien from './pages/PemeriksaanPasien';
 import PenjualanLangsung from './pages/PenjualanLangsung';
 
 function App() {
@@ -44,7 +43,6 @@ function App() {
           <Route path='/rekam-medis' element={<RekamMedis />} />
           <Route path='/pelayanan-kesehatan' element={<PelayananKesehatan />} />
           <Route path='/antrian' element={<Antrian />} />
-          <Route path='/pemeriksaan/:id' element={<PemeriksaanPasien />} />
           <Route path='/penjualan-langsung' element={<PenjualanLangsung />} />
         </Route>
       </Routes>

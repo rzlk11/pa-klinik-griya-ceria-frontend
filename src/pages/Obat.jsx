@@ -18,11 +18,7 @@ const paginationComponentOptions = {
   selectAllRowsItemText: 'Semua',
 };
 
-const stats = [
-  { label: 'Total Obat', value: 6, icon: <i className="fa-solid fa-capsules"></i> },
-  { label: 'Obat Stok Rendah', value: 2, icon: <i className="fa-solid fa-triangle-exclamation text-yellow-500"></i> },
-  { label: 'Obat Stok Aman', value: 4, icon: <i className="fa-solid fa-check-circle text-green-500"></i> },
-];
+
 
 
 function Obat() {
@@ -32,6 +28,26 @@ function Obat() {
   const [selectedObat, setSelectedObat] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [inputHarga, setInputHarga] = useState('');
+
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [clearSelectedRows, setClearSelectedRows] = useState(false);
+  const handleRowSelected = React.useCallback(state => setSelectedRows(state.selectedRows), []);
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} obat terpilih?`)) {
+      try {
+        await Promise.all(selectedRows.map(row => 
+          axios.delete(`${import.meta.env.VITE_API_URL}/obat/${row.id_obat}`, { withCredentials: true })
+        ));
+        setSelectedRows([]);
+        setClearSelectedRows(!clearSelectedRows);
+        fetchData();
+      } catch (error) {
+        console.error(error);
+        alert(error.response?.data?.msg || "Terjadi kesalahan saat menghapus beberapa data.");
+      }
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -97,6 +113,7 @@ function Obat() {
       handleModalClose();
     } catch (error) {
       console.error(error);
+      alert(error.response?.data?.msg || "Terjadi kesalahan!");
     }
   };
 
@@ -140,26 +157,17 @@ function Obat() {
       {/* Header */}
       <h1 className="text-3xl font-bold text-green-800 mb-8">Obat</h1>
 
-      {/* Stats */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-8">
-        {stats.map((stat, idx) => (
-          <div
-            key={idx}
-            className="bg-white rounded-lg w-full shadow p-5 flex flex-col items-start"
-          >
-            <div className="text-gray-400 flex items-center mb-2">
-              <span className="mr-2">{stat.icon}</span>
-              <span>{stat.label}</span>
-            </div>
-            <div className="text-2xl font-bold text-green-800">{stat.value}</div>
-          </div>
-        ))}
-      </div>
+
 
       {/* Table Title and Actions */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-green-800">Tabel Data Obat</h2>
         <div className="flex items-center gap-2">
+          {selectedRows.length > 0 && (
+            <button className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 flex items-center gap-2 shadow" onClick={handleBulkDelete}>
+              <i className="fa-solid fa-trash"></i> Hapus Terpilih ({selectedRows.length})
+            </button>
+          )}
           <input
             type="text"
             placeholder="Search"
@@ -189,6 +197,7 @@ function Obat() {
           customStyles={customStyles}
           highlightOnHover
           striped
+          selectableRows onSelectedRowsChange={handleRowSelected} clearSelectedRows={clearSelectedRows}
         />
       </div>
 

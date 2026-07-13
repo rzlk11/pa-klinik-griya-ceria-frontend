@@ -8,6 +8,14 @@ function TableFilter({ onFilterChange, pasienList = [], terapisList = [], showPa
   const [selectedTerapisId, setSelectedTerapisId] = useState('');
   const [activePreset, setActivePreset] = useState('semua');
 
+  // Helper function to get local date string YYYY-MM-DD
+  const getLocalISODate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Trigger onFilterChange whenever any filter state changes
   useEffect(() => {
     onFilterChange({
@@ -29,7 +37,7 @@ function TableFilter({ onFilterChange, pasienList = [], terapisList = [], showPa
     }
 
     if (preset === 'hari_ini') {
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = getLocalISODate(today);
       setStartDate(todayStr);
       setEndDate(todayStr);
       return;
@@ -40,8 +48,8 @@ function TableFilter({ onFilterChange, pasienList = [], terapisList = [], showPa
       const last = first + 6; // Sunday
       const firstDay = new Date(today.setDate(first));
       const lastDay = new Date(today.setDate(last));
-      setStartDate(firstDay.toISOString().split('T')[0]);
-      setEndDate(lastDay.toISOString().split('T')[0]);
+      setStartDate(getLocalISODate(firstDay));
+      setEndDate(getLocalISODate(lastDay));
       // restore today
       today.setTime(Date.now());
       return;
@@ -50,8 +58,8 @@ function TableFilter({ onFilterChange, pasienList = [], terapisList = [], showPa
     if (preset === 'bulan_ini') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      setStartDate(firstDay.toISOString().split('T')[0]);
-      setEndDate(lastDay.toISOString().split('T')[0]);
+      setStartDate(getLocalISODate(firstDay));
+      setEndDate(getLocalISODate(lastDay));
       return;
     }
   };

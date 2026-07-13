@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Select from 'react-select';
 
-function PemeriksaanPasien() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+function ExpandablePemeriksaan({ data, onSelesai, toggleExpand }) {
+  const id = data.id_antrian;
   
-  const [antrian, setAntrian] = useState(null);
+  const [antrian, setAntrian] = useState(data);
   const [riwayatMedis, setRiwayatMedis] = useState([]);
   const [pelayananList, setPelayananList] = useState([]);
   const [obatList, setObatList] = useState([]);
@@ -38,6 +36,11 @@ function PemeriksaanPasien() {
   const [showCariResepModal, setShowCariResepModal] = useState(false);
   const [cariResepKeyword, setCariResepKeyword] = useState('');
   
+  // Existing Record State
+  const [existingIdRekamMedis, setExistingIdRekamMedis] = useState(null);
+  const [existingIdResep, setExistingIdResep] = useState(null);
+  const [existingDetailResepIds, setExistingDetailResepIds] = useState([]);
+  
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -64,6 +67,28 @@ function PemeriksaanPasien() {
         setPelayananList(pelRes.data);
         setObatList(obRes.data);
         setResepList(resepRes.data);
+        
+        // Load existing examination data if any
+        const currentRm = rmRes.data.find(rm => rm.id_antrian === antRes.data.id_antrian);
+        if (currentRm) {
+          setExistingIdRekamMedis(currentRm.id_rekam_medis || currentRm.id);
+          setDiagnosa(currentRm.diagnosa || '');
+          setTindakan(currentRm.tindakan || '');
+          setCatatan(currentRm.catatan || '');
+          
+          const currentResep = resepRes.data.find(r => r.id_rekam_medis === (currentRm.id_rekam_medis || currentRm.id));
+          if (currentResep) {
+            setExistingIdResep(currentResep.id_resep || currentResep.id);
+            if (currentResep.resep_teks && currentResep.resep_teks.trim() !== '') {
+              setResepMode('teks');
+              setResepTeks(currentResep.resep_teks);
+            } else if (currentResep.details && currentResep.details.length > 0) {
+              setResepMode('terstruktur');
+              setResepDetails(currentResep.details);
+              setExistingDetailResepIds(currentResep.details.map(d => d.id_detail_resep));
+            }
+          }
+        }
         
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -112,7 +137,7 @@ function PemeriksaanPasien() {
 
   const handleSelesaikanPemeriksaan = async () => {
     try {
-      // 1. Buat Rekam Medis
+      // 1. Buat / Update Rekam Medis
       const rmData = {
         id_pasien: antrian.id_pasien,
         id_terapis: antrian.id_terapis,
@@ -125,10 +150,15 @@ function PemeriksaanPasien() {
         suhu: antrian.suhu
       };
       
-      const rmRes = await axios.post(`${import.meta.env.VITE_API_URL}/rekam-medis`, rmData, { withCredentials: true });
-      const idRekamMedis = rmRes.data.data?.id_rekam_medis || rmRes.data.data?.id;
+      let idRekamMedis = existingIdRekamMedis;
+      if (existingIdRekamMedis) {
+        await axios.patch(`${import.meta.env.VITE_API_URL}/rekam-medis/${existingIdRekamMedis}`, rmData, { withCredentials: true });
+      } else {
+        const rmRes = await axios.post(`${import.meta.env.VITE_API_URL}/rekam-medis`, rmData, { withCredentials: true });
+        idRekamMedis = rmRes.data.data?.id_rekam_medis || rmRes.data.data?.id;
+      }
 
-      // 2. Buat Resep Obat (jika ada resep)
+      // 2. Buat / Update Resep Obat (jika ada resep)
       const hasResepTeks = resepMode === 'teks' && resepTeks.trim() !== '';
       const hasResepStruktur = resepMode === 'terstruktur' && resepDetails.length > 0;
       
@@ -139,21 +169,45 @@ function PemeriksaanPasien() {
           status_resep: 'Aktif',
           resep_teks: resepTeks
         };
-        await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, resepData, { withCredentials: true });
+        if (existingIdResep) {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/resep-obat/${existingIdResep}`, resepData, { withCredentials: true });
+        } else {
+          await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, resepData, { withCredentials: true });
+        }
       } else if (hasResepStruktur) {
         const resepData = { 
           id_rekam_medis: idRekamMedis, 
           tanggal_resep: new Date().toISOString().split('T')[0], 
-          status_resep: 'Aktif', 
-          details: resepDetails.map(d => ({
-            id_obat: d.id_obat,
-            dosis: d.dosis,
-            jumlah_obat: d.jumlah_obat,
-            aturan_pakai: d.aturan_pakai,
-            catatan_terapis: d.catatan_terapis
-          }))
+          status_resep: 'Aktif'
         };
-        await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, resepData, { withCredentials: true });
+        
+        let currentIdResep = existingIdResep;
+        if (existingIdResep) {
+          await axios.patch(`${import.meta.env.VITE_API_URL}/resep-obat/${existingIdResep}`, resepData, { withCredentials: true });
+          
+          // Hapus detail lama agar tidak menumpuk saat update
+          for (const oldId of existingDetailResepIds) {
+            try {
+              await axios.delete(`${import.meta.env.VITE_API_URL}/detail-resep-obat/${oldId}`, { withCredentials: true });
+            } catch (e) { console.error(e) }
+          }
+        } else {
+          const resRes = await axios.post(`${import.meta.env.VITE_API_URL}/resep-obat`, resepData, { withCredentials: true });
+          currentIdResep = resRes.data.data?.id_resep || resRes.data.data?.id;
+        }
+
+        // Post detail resep baru
+        for (const detail of resepDetails) {
+          const detailData = {
+            id_resep: currentIdResep,
+            id_obat: detail.id_obat,
+            dosis: detail.dosis,
+            jumlah_obat: detail.jumlah_obat,
+            aturan_pakai: detail.aturan_pakai,
+            catatan_terapis: detail.catatan_terapis
+          };
+          await axios.post(`${import.meta.env.VITE_API_URL}/detail-resep-obat`, detailData, { withCredentials: true });
+        }
       }
 
       // 4. Update Status Antrian & Buat Transaksi jika tanpa resep
@@ -227,12 +281,10 @@ function PemeriksaanPasien() {
   if (!antrian) return <div className="p-8 text-center text-gray-500">Memuat data pasien...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto pb-12">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate('/dashboard/dokter')} className="text-gray-500 hover:text-green-700 bg-white p-2 rounded-full shadow">
-          <i className="fa-solid fa-arrow-left"></i>
-        </button>
-        <h1 className="text-3xl font-bold text-green-800">Pemeriksaan Pasien</h1>
+    <div className="bg-green-50 p-6 border-b-2 border-green-700 shadow-inner">
+      <div className="flex items-center gap-2 mb-4 border-b border-green-200 pb-2">
+        <i className="fa-solid fa-stethoscope text-green-700 text-xl"></i>
+        <h2 className="text-xl font-bold text-green-800">Pemeriksaan: {data.pasien?.name}</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -508,10 +560,14 @@ function PemeriksaanPasien() {
               )}
 
               <button 
-                onClick={() => navigate('/dashboard/dokter')}
+                onClick={() => {
+                  setShowSummary(false);
+                  if (onSelesai) onSelesai();
+                  if (toggleExpand) toggleExpand();
+                }}
                 className="w-full bg-green-700 text-white font-bold py-3 rounded-lg hover:bg-green-800 transition shadow-md"
               >
-                Kembali ke Dashboard
+                Tutup & Selesai
               </button>
             </div>
           </div>
@@ -588,4 +644,4 @@ function PemeriksaanPasien() {
   );
 }
 
-export default PemeriksaanPasien;
+export default ExpandablePemeriksaan;
